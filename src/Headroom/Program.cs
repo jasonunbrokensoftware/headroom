@@ -75,7 +75,6 @@ builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.TypeInfoResol
 var app = builder.Build();
 string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 string origin = "";
-long lastSeen = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 app.Use(async (context, next) =>
 {
     context.Response.Headers.CacheControl = "no-store";
@@ -108,7 +107,6 @@ foreach (var (route, resource, type) in new[] {
 }
 app.MapGet("/api/accounts", () =>
 {
-    Interlocked.Exchange(ref lastSeen, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
     return Results.Json(accounts.Snapshot(), AppJson.Default.DashboardView);
 });
 app.MapPost("/api/accounts/login", async (LoginInput input) => Results.Json(await accounts.AddAndLoginAsync(input.DeviceCode), AppJson.Default.LoginInfo));
@@ -133,7 +131,7 @@ await app.StartAsync();
 origin = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
 string launchUrl = origin + "/#" + token;
 File.WriteAllText(instancePath, JsonSerializer.Serialize(new InstanceInfo(launchUrl), AppJson.Default.InstanceInfo));
-ready.TrySetResult(new DesktopStart(launchUrl, data));
+ready.TrySetResult(new DesktopStart(launchUrl, data, accounts.RefreshAllAsync, args.Contains("--background")));
 using var closeWindow = app.Lifetime.ApplicationStopping.Register(desktop.RequestClose);
 using var stopping = new CancellationTokenSource();
 var refreshLoop = Task.Run(async () =>
@@ -142,8 +140,7 @@ var refreshLoop = Task.Run(async () =>
     {
         while (!stopping.IsCancellationRequested)
         {
-            if (DateTimeOffset.UtcNow.ToUnixTimeSeconds() - Interlocked.Read(ref lastSeen) < 90)
-                await accounts.RefreshAllAsync();
+            await accounts.RefreshAllAsync(); // Continue account-wide monitoring while the window is hidden.
             await Task.Delay(TimeSpan.FromSeconds(60), stopping.Token);
         }
     }

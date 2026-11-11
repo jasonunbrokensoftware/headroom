@@ -6,7 +6,7 @@ if (initial) { sessionStorage.setItem('session', initial); history.replaceState(
 const token = sessionStorage.getItem('session');
 
 createApp({
-  data: () => ({ accounts: [], login: null, error: '', connectionError: '', loaded: false, loading: true, maximized: false, now: Date.now(), stopped: false,
+  data: () => ({ accounts: [], login: null, error: '', connectionError: '', loaded: false, loading: true, maximized: false, trayAvailable: false, now: Date.now(), stopped: false,
     refreshing: false, adding: false, copyStatus: '', poll: null, clock: null }),
   computed: { overview() { return summarizeUsage(this.accounts, this.now); },
     totalsLoading() { return !this.loaded || this.overview.pending > 0; } },
@@ -53,5 +53,5 @@ createApp({
       return (days ? `${days}d ` : '') + [hours, Math.floor(left / 60), left % 60].map(n => String(n).padStart(2, '0')).join(':');
     }
   },
-  mounted() { document.getElementById('boot-status')?.remove(); window.external?.receiveMessage?.(message => { if (message === 'window:maximized') this.maximized = true; else if (message === 'window:restored') this.maximized = false; }); this.windowAction('ready'); this.load(); this.poll = setInterval(() => this.load(), 3000); this.clock = setInterval(() => this.now = Date.now(), 1000); }
+  mounted() { document.getElementById('boot-status')?.remove(); window.external?.receiveMessage?.(message => { if (message === 'window:maximized') this.maximized = true; else if (message === 'window:restored') this.maximized = false; else if (message === 'window:tray') this.trayAvailable = true; else if (message === 'window:no-tray') this.trayAvailable = false; }); this.windowAction('ready'); this.load(); this.poll = setInterval(() => this.load(), 3000); this.clock = setInterval(() => this.now = Date.now(), 1000); }
 }).mount('#app');

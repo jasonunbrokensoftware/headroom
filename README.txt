@@ -69,7 +69,17 @@ signs out only its dashboard connection. It does not change your main Codex
 login. The dashboard listens only on 127.0.0.1 and protects API calls with a
 random session token. Login credentials never go through the Vue frontend.
 
-Closing the desktop window stops the utility and monitoring.
+On Windows, closing the desktop window hides Headroom in the system tray;
+account-wide monitoring continues every minute without an open dashboard.
+Click the tray icon to reopen it. Right-click for Open, Refresh all accounts,
+Start with Windows, and Quit Headroom. Quit fully stops monitoring. The tray
+icon is restored if Explorer restarts. If the tray cannot be created, closing
+the window exits normally so the app cannot become inaccessible.
+Start with Windows is optional and initially off. Its preference is kept in
+settings.json beside the EXE; enabling it registers this EXE in Windows' per-user
+startup list with --background. Launch Headroom from its new location after
+moving it to update that registration. Linux keeps its existing desktop behavior;
+the Windows tray adapter does not introduce WinForms or WPF dependencies.
 Running the EXE again brings the existing desktop window forward. Account
 sign-in deliberately opens in your usual browser; the dashboard stays in its
 own window. The Copy link option works with separate browser profiles.

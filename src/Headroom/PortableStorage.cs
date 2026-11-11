@@ -2,11 +2,18 @@ using System.Text.Json;
 
 namespace Headroom;
 
-public record LocalSettings(string? CodexPath = null);
+public record LocalSettings(string? CodexPath = null, bool StartWithWindows = false);
 
 internal static class PortableStorage
 {
     public static string DataDirectory(string? option) => Path.GetFullPath(option ?? "data", AppContext.BaseDirectory);
+
+    public static void SaveSettings(LocalSettings settings)
+    {
+        string path = Path.Combine(AppContext.BaseDirectory, "settings.json");
+        File.WriteAllText(path + ".tmp", JsonSerializer.Serialize(settings, AppJson.Default.LocalSettings));
+        File.Move(path + ".tmp", path, true);
+    }
 
     public static LocalSettings Settings()
     {

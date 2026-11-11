@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace Headroom;
 
-internal sealed record DesktopStart(string Url, string DataDirectory);
+internal sealed record DesktopStart(string Url, string DataDirectory, Func<Task> Refresh, bool Background);
 
 internal sealed class DesktopWindow
 {
@@ -12,10 +12,13 @@ internal sealed class DesktopWindow
     private volatile bool closing;
     private volatile bool closeRequested;
     private bool webReady;
+    private SystemTray? tray;
+    private bool hideOnReady;
 
     // Called on the application's original STA thread, also the GTK main thread on Linux.
     public void Run(DesktopStart start, Action stop)
     {
+        hideOnReady = start.Background;
         // WebView2's environment override takes precedence over its API parameter.
         // Keep the profile in the portable folder even if the parent process sets it.
         if (OperatingSystem.IsWindows())
@@ -30,6 +33,7 @@ internal sealed class DesktopWindow
             .SetSize(1200, 780)
             .SetMinSize(680, 480)
             .SetResizable(true)
+            .SetMinimized(start.Background)
             .SetTemporaryFilesPath(Path.Combine(start.DataDirectory, "webview"))
             .SetContextMenuEnabled(false)
             .SetDevToolsEnabled(false)
@@ -45,17 +49,22 @@ internal sealed class DesktopWindow
             {
                 created = true;
                 WindowGestures.Configure(window!);
+                if (OperatingSystem.IsWindows())
+                    tray = new(window!.WindowHandle, AppIcon.WindowIcon(start.DataDirectory),
+                        () => _ = Task.Run(async () => { try { await start.Refresh(); } catch { } }), RequestClose);
                 if (closeRequested) window!.Close();
             })
             .RegisterWindowClosingHandler((_, _) =>
             {
+                if (!closeRequested && OperatingSystem.IsWindows() && tray?.Available == true)
+                { tray.Hide(); return true; }
                 closing = true;
                 stop();
                 return false;
             })
             .Load(start.Url);
         try { window.WaitForClose(); }
-        finally { closing = true; created = false; stop(); }
+        finally { if (OperatingSystem.IsWindows()) tray?.Dispose(); closing = true; created = false; stop(); }
     }
 
     public void RequestClose()
@@ -67,12 +76,20 @@ internal sealed class DesktopWindow
     public void Activate()
     {
         if (!created || closing) return;
-        window!.Invoke(() => window.SetMinimized(false).SetTopMost(true).SetTopMost(false));
+        window!.Invoke(() =>
+        {
+            if (OperatingSystem.IsWindows() && tray is not null) tray.Show();
+            else window.SetMinimized(false).SetTopMost(true).SetTopMost(false);
+        });
     }
 
     private void SendState()
     {
-        if (created && webReady && !closing) window!.SendWebMessage(window.Maximized ? "window:maximized" : "window:restored");
+        if (created && webReady && !closing)
+        {
+            window!.SendWebMessage(window.Maximized ? "window:maximized" : "window:restored");
+            window.SendWebMessage(OperatingSystem.IsWindows() && tray?.Available == true ? "window:tray" : "window:no-tray");
+        }
     }
 
     private void HandleMessage(string message)
@@ -84,7 +101,10 @@ internal sealed class DesktopWindow
             var request = document.RootElement;
             switch (request.Field("action").Text())
             {
-                case "ready": webReady = true; SendState(); break;
+                case "ready":
+                    webReady = true; SendState();
+                    if (hideOnReady && OperatingSystem.IsWindows()) { tray?.Hide(); hideOnReady = false; }
+                    break;
                 case "minimize": window!.SetMinimized(true); break;
                 case "maximize": window!.SetMaximized(!window.Maximized); SendState(); break;
                 case "close": window!.Close(); break;
