@@ -31,6 +31,7 @@ createApp({
     titleDown(event) { if (event.button !== 0) return; event.preventDefault(); this.windowAction(event.detail === 2 ? 'maximize' : 'drag', { x: Math.round(event.screenX), y: Math.round(event.screenY) }); },
     resizeDown(event, edge) { if (event.button === 0) this.windowAction('resize', { edge, x: Math.round(event.screenX), y: Math.round(event.screenY) }); },
     isStale(a) { return a.usage && (a.error || !a.updatedAt || this.now - new Date(a.updatedAt).getTime() > 90000); },
+    needsSignIn(a) { return !a.signedIn || /\b401\b|\bunauthorized\b|\bnot (?:logged|signed) in\b|\b(?:token|session|credentials?)\b.{0,30}\b(?:expired|invalid|revoked)\b|\b(?:expired|invalid|revoked)\b.{0,30}\b(?:token|session|credentials?)\b|\brefresh_token_(?:expired|reused|invalidated)\b|\bre-?authenticate\b/i.test(a.error || ''); },
     duplicate(a) { return a.signedIn && a.email && this.accounts.some(b => b.id !== a.id && b.signedIn && b.email?.toLowerCase() === a.email.toLowerCase() && (a.workspaceId && b.workspaceId ? a.workspaceId === b.workspaceId : a.workspace !== 'Workspace unavailable' && a.workspace === b.workspace)); },
     planName(plan) { return ({free:'Free', go:'Go', plus:'Plus', pro:'Pro', prolite:'Pro Lite', promax:'Pro Max', team:'Team', business:'Business', enterprise:'Enterprise', ent26:'Enterprise', edu:'Edu', unknown:'Unknown plan'})[plan] || plan.replaceAll('_', ' '); },
     date(seconds) { return seconds == null ? 'Reset time unknown' : new Date(seconds * 1000).toLocaleString(); },

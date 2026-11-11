@@ -26,6 +26,14 @@ app.accounts = [{id:'1',email:'a@example.com',workspaceId:'a',workspace:'One',si
 assert.equal(app.duplicate(app.accounts[0]),false);
 app.accounts[1].workspaceId='a'; assert.equal(app.duplicate(app.accounts[0]),true);
 console.log('PASS frontend one-click sign-in, window bridge, and workspace-aware duplicate checks');
+assert.equal(app.needsSignIn({signedIn:true,error:null}),false);
+assert.equal(app.needsSignIn({signedIn:true,error:'Network timeout'}),false);
+assert.equal(app.needsSignIn({signedIn:true,error:'429 rate limit exceeded'}),false);
+assert.equal(app.needsSignIn({signedIn:false}),true);
+assert.equal(app.needsSignIn({signedIn:true,error:'HTTP 401 Unauthorized'}),true);
+assert.equal(app.needsSignIn({signedIn:true,error:'Your refresh token has expired'}),true);
+assert.equal(app.needsSignIn({signedIn:true,error:'refresh_token_reused'}),true);
+console.log('PASS sign-in action appears only for signed-out or authentication-failed accounts');
 // Compile the actual Vue template without starting a browser or a desktop capture.
 const vueSource = await readFile(root+'vue.js','utf8');
 const vue = await import('data:text/javascript;base64,'+Buffer.from(vueSource).toString('base64'));
