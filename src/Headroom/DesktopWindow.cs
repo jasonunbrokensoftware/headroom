@@ -91,8 +91,10 @@ internal sealed class DesktopWindow
                 case "drag":
                 case "resize":
                     string? edge = request.Field("action").Text() == "resize" ? request.Field("edge").Text() : null;
-                    if (!window!.Maximized)
-                        WindowGestures.Begin(window, edge, (int)(request.Field("x").Number() ?? 0), (int)(request.Field("y").Number() ?? 0));
+                    // Caption drags must reach the OS even while maximized, so it can
+                    // restore under the pointer once the native drag threshold is crossed.
+                    if (edge is null || !window!.Maximized)
+                        WindowGestures.Begin(window!, edge, (int)(request.Field("x").Number() ?? 0), (int)(request.Field("y").Number() ?? 0));
                     break;
             }
         }

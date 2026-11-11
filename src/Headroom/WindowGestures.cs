@@ -13,6 +13,10 @@ internal static partial class WindowGestures
         // Keep native sizing and taskbar behavior while drawing the whole frame in Vue.
         window.SetResizable(true);
         SetWindowSubclass(window.WindowHandle, &FrameProcedure, 1, 0);
+        // Keep caption behavior (including drag-to-restore and snapping) for
+        // DefWindowProc. WM_NCCALCSIZE below still hides the entire native frame.
+        // https://learn.microsoft.com/en-us/windows/win32/dwm/customframe
+        SetWindowLongPtrW(window.WindowHandle, -16, GetWindowLongPtrW(window.WindowHandle, -16) | 0x00C00000); // GWL_STYLE, WS_CAPTION
         SetWindowPos(window.WindowHandle, 0, 0, 0, 0, 0, 0x0037); // FRAMECHANGED, no move/size/activation/z-order
     }
 
@@ -80,6 +84,8 @@ internal static partial class WindowGestures
     [LibraryImport("comctl32.dll")] [return: MarshalAs(UnmanagedType.Bool)]
     private static unsafe partial bool SetWindowSubclass(nint window, delegate* unmanaged[Stdcall]<nint, uint, nuint, nint, nuint, nuint, nint> callback, nuint id, nuint data);
     [LibraryImport("comctl32.dll")] private static partial nint DefSubclassProc(nint window, uint message, nuint wParam, nint lParam);
+    [LibraryImport("user32.dll")] private static partial nint GetWindowLongPtrW(nint window, int index);
+    [LibraryImport("user32.dll")] private static partial nint SetWindowLongPtrW(nint window, int index, nint value);
     [LibraryImport("user32.dll")] private static partial nint MonitorFromWindow(nint window, uint flags);
     [LibraryImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool GetMonitorInfoW(nint monitor, ref MonitorInfo info);
