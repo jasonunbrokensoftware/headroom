@@ -1,0 +1,16 @@
+**/bin/
+**/obj/
+artifacts/
+app/
+data/
+.test-data/
+**/auth.json
+**/accounts.json
+**/instance.json
+**/instance.lock
+*.pdb
+*.user
+*.suo
+.vs/
+.idea/
+node_modules/

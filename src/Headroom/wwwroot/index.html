@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Headroom</title><link rel="stylesheet" href="/style.css"></head>
+<body><div id="app" v-cloak>
+<header class="titlebar"><div class="title-drag" @mousedown="titleDown"><span class="app-mark" aria-hidden="true">H</span><h1>Headroom</h1></div><div class="window-controls">
+<button title="Minimize" aria-label="Minimize" @click="windowAction('minimize')"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10"/></svg></button>
+<button :title="maximized ? 'Restore' : 'Maximize'" :aria-label="maximized ? 'Restore' : 'Maximize'" @click="windowAction('maximize')"><svg viewBox="0 0 16 16" aria-hidden="true"><path :d="maximized ? 'M5 3h8v8M3 5h8v8H3z' : 'M3 3h10v10H3z'"/></svg></button>
+<button class="window-close" title="Close" aria-label="Close" @click="windowAction('close')"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 3 10 10M13 3 3 13"/></svg></button>
+</div></header>
+<div class="content">
+<div class="bar"><div><p class="intro">Usage, countdowns, and earned resets.</p><span>{{ accounts.length }} account{{ accounts.length === 1 ? '' : 's' }} · refreshes every minute</span></div><div class="tools"><button @click="refreshAll" :disabled="refreshing || stopped">{{ refreshing ? 'Refreshing…' : 'Refresh all' }}</button><button class="primary" @click="add" :disabled="adding || !!login || stopped">{{ adding ? 'Opening sign-in…' : 'Sign in to another account' }}</button></div></div>
+<p v-if="error" class="error" role="alert">{{ error }}</p><p v-if="stopped" class="notice">Monitor stopped. Launch Headroom.exe to open it again.</p>
+<section v-if="!accounts.length && !stopped" class="empty"><h2>All your accounts, one place</h2><p>Sign in to get started. Email and workspace names appear automatically.</p></section>
+<main>
+<article v-for="account in accounts" :key="account.id" class="card">
+<div class="cardhead"><div><h2>{{ account.email || 'Sign-in pending' }}</h2><div class="identity" :title="account.workspaceId || ''">{{ account.workspace }}<span v-if="account.plan"> · {{ planName(account.plan) }}</span></div></div><span :class="['status', {stale: isStale(account), offline: !account.signedIn}]">{{ account.busy ? 'Working…' : isStale(account) ? 'Stale' : account.signedIn ? 'Connected' : 'Sign in' }}</span></div>
+<div class="actions"><button @click="signIn(account, false)" :disabled="account.busy || login || stopped">{{ account.signedIn ? 'Sign in again' : 'Sign in' }}</button><button v-if="!account.signedIn" @click="signIn(account, true)" :disabled="account.busy || login || stopped">Device code</button><button class="danger" @click="remove(account)" :disabled="account.busy || stopped">Remove</button></div>
+<p v-if="duplicate(account)" class="warning">This account and workspace are already on another card.</p>
+<p v-if="account.error" class="error">{{ account.error }}</p>
+<div v-if="account.usage">
+<section v-for="(quota,i) in account.usage.quotas" :key="i" class="quota"><div class="spread"><strong>{{ quota.window }}</strong><strong>{{ quota.remaining == null ? 'Unknown' : quota.remaining + '%' }}<small v-if="quota.remaining != null"> remaining</small></strong></div><div class="muted bucket">{{ quota.bucket }}</div><progress v-if="quota.remaining != null" max="100" :value="quota.remaining"></progress><div class="spread"><span>Resets in</span><b>{{ countdown(quota.resetsAt) }}</b></div><div class="muted">{{ date(quota.resetsAt) }}</div><p class="warning" v-if="quota.limitReached">Limit reached: {{ quota.limitReached }}</p></section>
+<p v-if="!account.usage.quotas.length" class="muted">No quota windows reported.</p>
+<section class="resets"><div class="spread"><strong>Earned resets</strong><strong class="count">{{ account.usage.resetCount ?? 'Unknown' }}</strong></div><p v-if="account.usage.resets == null" class="muted">Expiration details unavailable.</p><div v-for="(reset,i) in account.usage.resets || []" :key="i" class="reset"><span>{{ reset.title || 'Earned reset' }}</span><span>{{ reset.expiresAt == null ? 'No expiration reported' : 'Expires ' + date(reset.expiresAt) }}</span></div><p v-if="account.usage.resets && account.usage.resetCount > account.usage.resets.length" class="muted">Additional reset details were not returned.</p></section>
+</div><p v-else class="placeholder">{{ account.signedIn ? 'Usage is unavailable. Try Refresh all.' : 'Sign in to see usage and earned resets.' }}</p>
+<footer>Updated {{ account.updatedAt ? new Date(account.updatedAt).toLocaleTimeString() : 'never' }}<span v-if="isStale(account)"> · showing last known values</span></footer>
+</article></main>
+<p class="footnote">Times use your system’s time zone. Monitoring sends no model prompts. Use Codex to redeem resets. Closing this window stops the utility.</p>
+</div>
+<div class="dialog-backdrop" v-if="login"><section class="login-dialog" role="dialog" aria-modal="true" aria-labelledby="login-heading"><h2 id="login-heading">Complete sign-in in your browser</h2><p>Choose your account and workspace. To use a different browser profile or a private window, copy the link below.</p><p v-if="login.code" class="code">{{ login.code }}</p><label class="muted" for="login-url">Sign-in link</label><input id="login-url" class="login-url" readonly :value="login.url" @focus="$event.target.select()"><div class="tools"><button class="primary" @click="openLogin">Open sign-in page</button><button @click="copyLink">Copy link</button><button @click="cancelLogin">Cancel</button></div><p class="muted">{{ copyStatus || 'Your email and workspace will appear when sign-in finishes.' }}</p></section></div>
+<template v-if="!maximized"><div v-for="edge in ['n','ne','e','se','s','sw','w','nw']" :key="edge" :class="['resize-edge', edge]" aria-hidden="true" @mousedown.prevent="resizeDown($event, edge)"></div></template>
+</div><script type="module" src="/app.js"></script></body></html>

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <OutputType Condition="$([MSBuild]::IsOSPlatform('Windows'))">WinExe</OutputType>
+    <AssemblyName>Headroom</AssemblyName>
+    <RootNamespace>Headroom</RootNamespace>
+    <Product>Headroom</Product>
+    <Title>Headroom</Title>
+    <Description>All your AI usage. One place.</Description>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+    <RuntimeFrameworkVersion>10.0.15</RuntimeFrameworkVersion>
+    <IlcPackageVersion>10.0.15</IlcPackageVersion>
+    <IlcOptimizationPreference>Size</IlcOptimizationPreference>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Photino.NET" Version="4.0.16" />
+    <Content Remove="wwwroot/**" />
+    <EmbeddedResource Include="wwwroot/*" LogicalName="web/%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>
