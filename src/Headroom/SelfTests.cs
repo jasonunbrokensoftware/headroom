@@ -27,6 +27,12 @@ internal static class SelfTests
         Check(AccountIdentity.Workspace(identity with { WorkspaceName = null, WorkspaceId = null }) == "Workspace unavailable", "Missing business workspace is not invented");
         Check(WindowGestures.HitTest("nw") == (13, 0) && WindowGestures.HitTest("se") == (17, 7) && WindowGestures.HitTest("bad").Windows == 0, "Cross-platform resize mapping and invalid gesture rejection");
         string folder = Path.Combine(Path.GetTempPath(), "HeadroomTests", Guid.NewGuid().ToString("N"));
+        string iconFile = AppIcon.WindowIcon(folder);
+        byte[] iconBytes = File.ReadAllBytes(iconFile);
+        Check(OperatingSystem.IsWindows()
+            ? iconBytes.Length > 6 && BitConverter.ToUInt16(iconBytes, 2) == 1 && BitConverter.ToUInt16(iconBytes, 4) == 10
+            : iconBytes.Length > 24 && iconBytes[0] == 137 && iconBytes[1] == 80,
+            "Embedded native window icon is available without external asset files");
         await using (var manager = new AccountManager(folder))
         {
             for (int i = 0; i < 7; i++) manager.Add();

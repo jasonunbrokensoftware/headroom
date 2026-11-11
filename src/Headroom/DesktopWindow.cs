@@ -19,6 +19,7 @@ internal sealed class DesktopWindow
         window = new PhotinoWindow()
             .SetLogVerbosity(0)
             .SetTitle("Headroom")
+            .SetIconFile(AppIcon.WindowIcon(start.DataDirectory))
             .SetChromeless(true)
             .SetUseOsDefaultLocation(false)
             .SetUseOsDefaultSize(false)

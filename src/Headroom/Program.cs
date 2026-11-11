@@ -95,7 +95,8 @@ app.Use(async (context, next) =>
 });
 foreach (var (route, resource, type) in new[] {
     ("/", "index.html", "text/html; charset=utf-8"), ("/app.js", "app.js", "text/javascript; charset=utf-8"),
-    ("/style.css", "style.css", "text/css; charset=utf-8"), ("/vue.js", "vue.js", "text/javascript; charset=utf-8") })
+    ("/style.css", "style.css", "text/css; charset=utf-8"), ("/vue.js", "vue.js", "text/javascript; charset=utf-8"),
+    ("/headroom.svg", "headroom.svg", "image/svg+xml") })
 {
     using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("web/" + resource)
         ?? throw new InvalidOperationException("Missing embedded UI: " + resource);

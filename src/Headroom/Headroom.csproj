@@ -8,6 +8,7 @@
     <Product>Headroom</Product>
     <Title>Headroom</Title>
     <Description>All your AI usage. One place.</Description>
+    <ApplicationIcon>Assets/headroom.ico</ApplicationIcon>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -22,5 +23,7 @@
     <PackageReference Include="Photino.NET" Version="4.0.16" />
     <Content Remove="wwwroot/**" />
     <EmbeddedResource Include="wwwroot/*" LogicalName="web/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Assets/headroom.ico" LogicalName="brand.headroom.ico" />
+    <EmbeddedResource Include="Assets/headroom.png" LogicalName="brand.headroom.png" />
   </ItemGroup>
 </Project>

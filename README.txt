@@ -106,3 +106,12 @@ The JavaScript checks need a current Node.js version for development only.
 HEADROOM_TEST_EXE can point the backend test at another Headroom executable.
 The delivered Windows app and saved account data are in the Headroom output
 folder. Keep that app/data folder at its installed path to preserve sign-ins.
+
+ICON
+
+Headroom's original vector mark is wwwroot/headroom.svg. The Windows ICO
+contains 16, 20, 24, 32, 40, 48, 64, 96, 128, and 256-pixel images, including a
+pixel-aligned 16px mark. A 512px PNG is included for the Linux window icon.
+The EXE, native window/taskbar, title bar, and webview favicon share this mark.
+The icon files are embedded; native window icons are cached under data/icons.
+Regenerate the artwork on Windows with tools/Build-Icon.ps1 (development only).

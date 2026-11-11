@@ -1,7 +1,7 @@
 <!doctype html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Headroom</title><link rel="stylesheet" href="/style.css"></head>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Headroom</title><link rel="icon" type="image/svg+xml" href="/headroom.svg"><link rel="stylesheet" href="/style.css"></head>
 <body><div id="app" v-cloak>
-<header class="titlebar"><div class="title-drag" @mousedown="titleDown"><span class="app-mark" aria-hidden="true">H</span><h1>Headroom</h1></div><div class="window-controls">
+<header class="titlebar"><div class="title-drag" @mousedown="titleDown"><img class="app-mark" src="/headroom.svg" alt="" width="24" height="24" draggable="false"><h1>Headroom</h1></div><div class="window-controls">
 <button title="Minimize" aria-label="Minimize" @click="windowAction('minimize')"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10"/></svg></button>
 <button :title="maximized ? 'Restore' : 'Maximize'" :aria-label="maximized ? 'Restore' : 'Maximize'" @click="windowAction('maximize')"><svg viewBox="0 0 16 16" aria-hidden="true"><path :d="maximized ? 'M5 3h8v8M3 5h8v8H3z' : 'M3 3h10v10H3z'"/></svg></button>
 <button class="window-close" title="Close" aria-label="Close" @click="windowAction('close')"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 3 10 10M13 3 3 13"/></svg></button>
