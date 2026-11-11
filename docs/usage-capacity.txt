@@ -1,0 +1,106 @@
+HEADROOM CAPACITY ESTIMATE — RESEARCH AND METHOD
+Reviewed November 11, 2026
+
+Why allowance equivalents
+
+The Codex account/rateLimits/read schema exposes used percentages, quota windows,
+plan types, permission to use ordinary allowance, purchased credits, and earned
+reset details. It does not supply absolute subscription token or compute quotas.
+Usage varies with model, context, task complexity, tools, and reasoning. API
+token prices therefore cannot turn these percentages into a reliable token,
+task, dollar, or work-hour balance. A sum of unweighted percentages also ignores
+different plan sizes.
+
+Headroom uses the full Pro 100 weekly Codex allowance as one reference unit.
+This is an estimate based on published relative plan capacities, not an absolute
+live account entitlement or a guarantee of equivalent performance across models.
+It is not a number of calendar weeks: a user can consume a weekly allowance
+quickly, or spread it across the period.
+
+Published relative plan capacities (November 8, 2026)
+
+Plan       CLI planType     Versus Plus     Pro 100 equivalent
+Plus       plus                  1                  0.1
+Pro 100    prolite              10                  1
+Pro 200    pro                  20                  2
+Pro 500    promax               50                  5
+
+OpenAI Codex lead Thibault Sottiaux published these ratios on November 8.
+Original primary-source post:
+https://x.com/thsottiaux/status/2119296267545419987
+Direct X retrieval returned HTTP 403 during research. The original post text
+was available in indexed public mirrors, including:
+https://nitter.jaydenha.uk/thsottiaux/status/2119296267545419987
+https://lurkbird.com/thsottiaux
+
+The current OpenAI Pro help article corroborates the recent doubling and the
+withdrawal of the planned Pro 200 limit reduction; it does not itself enumerate
+all four ratios above:
+https://help.openai.com/en/articles/9793128-about-chatgpt-pro-tiers
+
+The weights and review date live in wwwroot/usage-totals.js (capacityPolicy).
+Update them and their tests when OpenAI changes plan capacities. Do not derive
+weights from subscription prices. Business, Team, Enterprise, Edu, Go, Free,
+unknown plans, and custom limits are not assigned invented multipliers.
+
+Formula, per unique account/workspace
+
+  current = plan weight x clamp(weekly remaining %, 0, 100) / 100
+  banked potential = plan weight x verified available full-reset count
+  total potential = sum(current) + sum(banked potential)
+
+Screenshot example: Pro 200 at 0%, Pro 100 at 47% with one full reset, and
+Pro 100 at 6% with two full resets:
+  current = 2 x 0 + 1 x 0.47 + 1 x 0.06 = 0.53
+  banked = 1 x 1 + 1 x 2 = up to 3
+  total = up to 3.53 Pro 100 weekly allowances
+
+The "up to" qualification matters. A reset refills covered allowances to full;
+it does not stack another allowance on top of an unspent balance. To realize
+the full potential, use the existing allowance, redeem a reset before expiry,
+then consume that restored allowance before redeeming another. Natural refreshes
+may intervene, and other account limits can restrict when capacity can be used.
+This is inventory potential, not a promised amount spendable immediately.
+
+Reset semantics (primary source)
+https://help.openai.com/en/articles/20001498-how-resets-work-in-codex
+
+At review time, Pro resets cover the weekly allowance. Plus and Business
+Standard resets cover both 5-hour and weekly windows. The windows overlap the
+same usage; they are constraints, not independent additive inventories. Resets
+can change the next refresh schedule. Earned resets have a redemption deadline;
+the restored allowance then follows the applicable usage-window schedule.
+
+Usage variability and current plan guidance (primary source)
+https://learn.chatgpt.com/docs/pricing?codex-pricing-plans=individual
+
+Evidence handling
+
+- Only the main Codex bucket and a single unambiguous 10080-minute weekly quota
+  enter the estimate. Short-window and model-specific quotas remain visible on
+  the account cards, but are not added to the same total.
+- A depleted short window is called out. OrdinaryUsageAllowed is retained from
+  the server and used for account status; nonzero weekly capacity alone is not
+  treated as authorization to use it immediately.
+- A current reading requires a signed-in account, usage data, no reported
+  refresh error, and an update no more than 90 seconds old. Due weekly resets
+  await confirmation from the server. Future scheduled renewals are not counted.
+- Account email plus workspace identity is deduplicated, preferring the freshest
+  usable reading. Unknown workspace identities are not guessed to be identical.
+- Only available reset details with resetType=codexRateLimits are valued.
+  Duplicate reset IDs count once. Known expired resets are removed locally as
+  time passes. In the Codex schema, expiresAt=null means no expiration.
+- The authoritative availableCount bounds the detail count. Missing/truncated
+  detail rows, unknown reset types, and unknown counts are not filled in by
+  assumption. Unvalued resets are explained. An unknown capacity is not zero.
+- Purchased credits remain separate. Shared-workspace balances are not summed
+  as if they were independent per-member credits. No conversion from purchased
+  credits to subscription allowance equivalents is attempted.
+- Partially known totals are labeled partial estimates, with included account
+  counts and a per-account breakdown. Initial pending reads show placeholders
+  instead of presenting a partial startup snapshot as final.
+
+Schema provenance: generated from the installed official Codex CLI app-server
+JSON schema during this review (GetAccountRateLimitsResponse, RateLimitSnapshot,
+RateLimitResetCredit, RateLimitResetType). No account credentials or live usage
+payloads are committed. Calculation tests use fixed, artificial fixtures.

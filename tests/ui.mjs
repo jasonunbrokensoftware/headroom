@@ -1,14 +1,15 @@
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
+import { isAccountLoading } from '../src/Headroom/wwwroot/usage-totals.js';
 const root = 'src/Headroom/wwwroot/';
 let options, messages = [], calls = [];
 const context = vm.createContext({
   createApp: value => { options = value; return { mount() {} }; },
-  location:{hash:''}, sessionStorage:{getItem:()=>''}, Date, JSON, Math,
+  location:{hash:''}, sessionStorage:{getItem:()=>''}, Date, JSON, Math, isAccountLoading,
   window:{external:{sendMessage:message=>messages.push(JSON.parse(message))}}
 });
-vm.runInContext((await readFile(root+'app.js','utf8')).replace("import { createApp } from './vue.js';",'').replace("import { summarizeUsage } from './usage-totals.js';",''), context);
+vm.runInContext((await readFile(root+'app.js','utf8')).replace("import { createApp } from './vue.js';",'').replace("import { summarizeUsage, isAccountLoading } from './usage-totals.js';",''), context);
 const app = options.data();
 for (const [key,value] of Object.entries(options.methods)) app[key] = value.bind(app);
 app.api = async (route,method) => { calls.push([route,method]); return route === '/accounts/login' ? {url:'https://example.org/sign-in'} : null; };
@@ -29,11 +30,22 @@ console.log('PASS frontend one-click sign-in, window bridge, and workspace-aware
 assert.equal(app.needsSignIn({signedIn:true,error:null}),false);
 assert.equal(app.needsSignIn({signedIn:true,error:'Network timeout'}),false);
 assert.equal(app.needsSignIn({signedIn:true,error:'429 rate limit exceeded'}),false);
-assert.equal(app.needsSignIn({signedIn:false}),true);
+assert.equal(app.needsSignIn({signedIn:false,updatedAt:new Date().toISOString()}),true);
+assert.equal(app.needsSignIn({signedIn:false,updatedAt:null,error:null}),false);
+assert.equal(app.needsSignIn({signedIn:false,updatedAt:null,error:'Network timeout'}),false);
+assert.equal(app.accountStatus({signedIn:false,updatedAt:null,error:null}),'Checking…');
 assert.equal(app.needsSignIn({signedIn:true,error:'HTTP 401 Unauthorized'}),true);
 assert.equal(app.needsSignIn({signedIn:true,error:'Your refresh token has expired'}),true);
 assert.equal(app.needsSignIn({signedIn:true,error:'refresh_token_reused'}),true);
 console.log('PASS sign-in action appears only for signed-out or authentication-failed accounts');
+assert.equal(app.loaded, false); assert.equal(app.loading, true);
+app.api = async () => { throw new Error('test connection failure'); };
+await options.methods.load.call(app);
+assert.equal(app.loaded, false); assert.equal(app.loading, false); assert.ok(app.connectionError);
+app.api = async () => ({accounts:[],login:null});
+await options.methods.load.call(app);
+assert.equal(app.loaded, true); assert.equal(app.connectionError, '');
+console.log('PASS startup, connection failure, and confirmed empty account list remain distinct');
 // Compile the actual Vue template without starting a browser or a desktop capture.
 const vueSource = await readFile(root+'vue.js','utf8');
 const vue = await import('data:text/javascript;base64,'+Buffer.from(vueSource).toString('base64'));

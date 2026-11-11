@@ -28,13 +28,28 @@ an allowance has reset. Stale data is marked. Earned-reset counts and available
 expiration details are displayed; the app does not redeem resets or start model
 conversations.
 
-The overview totals each quota bucket/window separately across unique accounts,
-and sums earned resets. Percentages are normalized per account: two accounts
-with 50% remaining show 100% combined, with their average shown beneath it.
-This is not a token estimate; plan capacities can differ. Stale, unknown,
-disconnected, and due-for-reset quota readings are excluded and labeled.
-Duplicate account/workspace profiles count once using the freshest reading.
-Earned-reset totals use the authoritative count, not the number of detail rows.
+The overview estimates capacity in Pro 100 weekly allowance equivalents.
+Plus, Pro 100, Pro 200, and Pro 500 are weighted at 0.1, 1, 2, and 5 respectively,
+using published November 8, 2026 plan ratios. An account with 50% left contributes
+half its plan weight. Verified full resets add up to one plan allowance each.
+For example, 47% and 6% left on two Pro 100 accounts plus three full resets
+represent 0.53 current allowances + up to 3 banked = up to 3.53 allowances.
+These are capacity equivalents, not calendar weeks, tokens, tasks, or hours.
+Use existing allowance before redeeming a reset; redeem before its expiry.
+Short windows and weekly limits apply to the same usage and are never added
+together. Scheduled future renewals and separate model quotas are not added.
+Purchased credits are displayed separately. Unknown plans, stale readings,
+expired resets, and resets with unverified scope are excluded and explained.
+Missing readings remain unavailable, not zero. Duplicate account/workspace
+profiles count once using the freshest reading. Details, source dates, and a
+per-account breakdown are under "How this estimate works". See
+docs/usage-capacity.txt in the source repository for research and assumptions.
+
+The dashboard shares one content width, with aligned account sections and
+collapsible reset expiration dates. Startup shows animated placeholders until
+each account's first reading arrives. Connection failures, signed-out accounts,
+and a genuinely empty account list have different states. Reduced-motion system
+preferences disable loading animations.
 
 PORTABLE STORAGE
 
@@ -139,6 +154,12 @@ After publishing, run from the repository root:
   node tests/totals.mjs
   node tests/backend.mjs
   node tests/single-exe.mjs
+
+Optional headless layout/loading checks (requires Playwright for development):
+  node tests/layout.mjs
+HEADROOM_PLAYWRIGHT_PATH can point to an existing Playwright package directory;
+HEADROOM_BROWSER can select an installed Chromium/Edge executable. These tests
+use isolated fake accounts and no desktop window or screen capture.
 
 The JavaScript checks need a current Node.js version for development only.
 HEADROOM_TEST_EXE can point the backend test at another Headroom executable.
