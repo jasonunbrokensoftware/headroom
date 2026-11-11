@@ -26,4 +26,20 @@
     <EmbeddedResource Include="Assets/headroom.ico" LogicalName="brand.headroom.ico" />
     <EmbeddedResource Include="Assets/headroom.png" LogicalName="brand.headroom.png" />
   </ItemGroup>
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" GeneratePathProperty="true" ExcludeAssets="all" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Windows.ImplementationLibrary" Version="1.0.240803.1" GeneratePathProperty="true" ExcludeAssets="all" PrivateAssets="all" />
+    <DirectPInvokeList Include="$(MSBuildProjectDirectory)/../../native/Photino.Windows.pinvoke.txt" />
+    <NativeLibrary Include="$(MSBuildProjectDirectory)/../../native/bin/x64/Release/Photino.Static.lib" />
+    <NativeLibrary Include="$(PkgMicrosoft_Web_WebView2)/build/native/x64/WebView2LoaderStatic.lib" />
+    <NativeLibrary Include="user32.lib;shell32.lib;gdi32.lib;comdlg32.lib;shlwapi.lib;shcore.lib;urlmon.lib;ole32.lib;oleaut32.lib;uuid.lib;version.lib;windowsapp.lib" />
+  </ItemGroup>
+  <Target Name="BuildStaticPhotino" BeforeTargets="IlcCompile" Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/../../tools/Build-Native.ps1&quot; -WebView2Root &quot;$(PkgMicrosoft_Web_WebView2)&quot; -WilRoot &quot;$(PkgMicrosoft_Windows_ImplementationLibrary)&quot;" />
+  </Target>
+  <Target Name="RemoveDynamicPhotinoFromPublish" AfterTargets="ComputeFilesToPublish" Condition="'$(RuntimeIdentifier)' == 'win-x64' and '$(PublishAot)' == 'true'">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)%(Extension)' == 'Photino.Native.dll' or '%(Filename)%(Extension)' == 'WebView2Loader.dll'" />
+    </ItemGroup>
+  </Target>
 </Project>

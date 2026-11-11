@@ -15,8 +15,9 @@ an edge or corner to resize. The Windows native title bar is hidden.
 
 The executable is compiled with .NET 10 Native AOT for Windows x64. It embeds
 the Vue production library and all UI assets. Photino.NET hosts the interface
-using WebView2 on Windows and WebKitGTK on Linux. Keep Photino.Native.dll and
-WebView2Loader.dll next to Headroom.exe. The Microsoft Edge WebView2 runtime
+using WebView2 on Windows and WebKitGTK on Linux. Windows builds statically link
+Photino and the WebView2 loader: distribute Headroom.exe alone, with no DLLs
+alongside it or extracted at startup. The Microsoft Edge WebView2 runtime
 must be installed (it is installed on this machine). Python, Node.js, a separate
 .NET runtime, a launcher script, and an internet CDN are not required to run it.
 The official Codex CLI must be installed; it manages sign-in and usage reads.
@@ -43,13 +44,18 @@ own window. The Copy link option works with separate browser profiles.
 BUILD
 
 From the repository root, with .NET 10 SDK and the Windows C++ build tools:
-  dotnet publish src/Headroom/Headroom.csproj -c Release -r win-x64 -o artifacts/windows
+  dotnet publish src/Headroom/Headroom.csproj -c Release -r win-x64 -o artifacts/single-exe
 
 No JavaScript build step is required. Vue 3.5.24 is vendored in wwwroot/vue.js;
 its MIT license is included in src/Headroom/VUE-LICENSE.txt. All frontend files are
 embedded into the executable at publish time. Server JSON uses source-generated
 serialization for AOT compatibility. Photino.NET 4.0.16 / Photino.Native 4.0.22
 provide the desktop shell. No WinForms or WPF dependency.
+The Windows publish automatically builds the pinned C++ sources in native/
+with the installed Visual Studio C++ toolset. Build-Native.ps1 is a development
+build helper, not an app launcher. PDB and staticwebassets diagnostic files in
+publish output are not needed for distribution. Run node tests/single-exe.mjs
+to verify system-only native DLL imports and run the EXE alone in a clean folder.
 
 LINUX PATH
 

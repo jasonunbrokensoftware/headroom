@@ -27,6 +27,8 @@ internal static class SelfTests
         Check(AccountIdentity.Workspace(identity with { WorkspaceName = null, WorkspaceId = null }) == "Workspace unavailable", "Missing business workspace is not invented");
         Check(WindowGestures.HitTest("nw") == (13, 0) && WindowGestures.HitTest("se") == (17, 7) && WindowGestures.HitTest("bad").Windows == 0, "Cross-platform resize mapping and invalid gesture rejection");
         string folder = Path.Combine(Path.GetTempPath(), "HeadroomTests", Guid.NewGuid().ToString("N"));
+        if (OperatingSystem.IsWindows())
+            Check(NativeDesktop.WebViewRuntimeAvailable() == 1, "Statically linked Photino and WebView2 loader resolve the installed runtime without a window");
         string iconFile = AppIcon.WindowIcon(folder);
         byte[] iconBytes = File.ReadAllBytes(iconFile);
         Check(OperatingSystem.IsWindows()
