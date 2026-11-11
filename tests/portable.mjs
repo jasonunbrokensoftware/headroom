@@ -41,6 +41,11 @@ async function run(folder, damaged = false) {
     if (damaged) {
       assert.ok(state.accounts[0].error, 'Damaged encrypted credentials fail closed');
       await assert.rejects(readFile(path.join(home, 'auth.json')), { code: 'ENOENT' });
+      const headers = { 'X-Session': url.hash.slice(1), 'Content-Type': 'application/json' };
+      const login = await fetch(url.origin + '/api/accounts/' + id + '/login', { method: 'POST', headers, body: '{}' });
+      assert.ok(login.ok, 'Reauthentication remains possible after a migration error');
+      assert.ok((await login.json()).url.startsWith('https://'));
+      await fetch(url.origin + '/api/login/cancel', { method: 'POST', headers });
       return;
     }
     assert.ok(state.accounts.every(a => !a.error && a.updatedAt), state.accounts.map(a => a.error).join('; '));
@@ -61,7 +66,7 @@ try {
   await writeFile(agePath, damaged);
   await run(first, true);
   await writeFile(agePath, original);
-  console.log('PASS damaged credentials are rejected without writing a partial sign-in');
+  console.log('PASS damaged credentials are rejected without a partial sign-in and reauthentication remains available');
   await run(first);
   console.log('PASS existing Windows keyring sign-in converts losslessly to local file storage');
   await cp(first, moved, { recursive: true });

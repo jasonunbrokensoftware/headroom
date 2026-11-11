@@ -12,17 +12,17 @@ internal static partial class PortableCredentials
     private static readonly object migrationLock = new();
     // Only reads the credential for this dashboard's isolated CODEX_HOME. Never
     // enumerates the credential store or reads the user's primary Codex profile.
-    public static void Prepare(string home)
+    public static void Prepare(string home, bool migrateCredentials = true)
     {
         // scrypt is deliberately memory-hard; migrate accounts one at a time.
-        lock (migrationLock) PrepareCore(home);
+        lock (migrationLock) PrepareCore(home, migrateCredentials);
     }
 
-    private static void PrepareCore(string home)
+    private static void PrepareCore(string home, bool migrateCredentials)
     {
         Directory.CreateDirectory(home);
         string authPath = Path.Combine(home, "auth.json");
-        if (!File.Exists(authPath) && OperatingSystem.IsWindows())
+        if (migrateCredentials && !File.Exists(authPath) && OperatingSystem.IsWindows())
         {
             string encrypted = Path.Combine(home, "secrets", "codex_auth.age");
             bool age = File.Exists(encrypted);

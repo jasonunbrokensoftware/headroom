@@ -67,7 +67,7 @@ internal sealed class AccountManager : IAsyncDisposable
         try
         {
             // Only this utility's isolated login is signed out.
-            await using var rpc = await CodexRpc.StartAsync(Home(e));
+            await using var rpc = await CodexRpc.StartAsync(Home(e), migrateCredentials: false);
             await rpc.CallAsync("account/logout");
             lock (sync) { entries.Remove(id); Save(); }
         }
@@ -134,7 +134,7 @@ internal sealed class AccountManager : IAsyncDisposable
             if (!await e.Gate.WaitAsync(0)) throw new InvalidOperationException("This account is refreshing. Try again in a moment.");
             acquired = true;
             lock (sync) e.View = e.View with { Busy = true, Error = null };
-            rpc = await CodexRpc.StartAsync(Home(e));
+            rpc = await CodexRpc.StartAsync(Home(e), migrateCredentials: false);
             var result = await rpc.CallAsync("account/login/start", device ? """{"type":"chatgptDeviceCode"}""" : """{"type":"chatgpt"}""");
             string url = result.Field("authUrl").Text() ?? result.Field("verificationUrl").Text() ?? throw new InvalidDataException("No sign-in URL returned.");
             var info = new LoginInfo(e.Config.Id, url, result.Field("userCode").Text());

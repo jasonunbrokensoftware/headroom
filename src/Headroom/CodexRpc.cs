@@ -56,10 +56,10 @@ internal sealed class CodexRpc : IAsyncDisposable
         throw new InvalidOperationException("Codex CLI was not found. Install Codex, place it in the tools folder beside Headroom.exe, or set codexPath in settings.json.");
     }
 
-    private CodexRpc(string home)
+    private CodexRpc(string home, bool migrateCredentials)
     {
         Directory.CreateDirectory(home);
-        PortableCredentials.Prepare(home);
+        PortableCredentials.Prepare(home, migrateCredentials);
         var start = new ProcessStartInfo(FindExecutable())
         {
             WorkingDirectory = home, UseShellExecute = false, CreateNoWindow = true,
@@ -81,9 +81,9 @@ internal sealed class CodexRpc : IAsyncDisposable
         reader = ReadAsync();
     }
 
-    public static async Task<CodexRpc> StartAsync(string home)
+    public static async Task<CodexRpc> StartAsync(string home, bool migrateCredentials = true)
     {
-        var rpc = new CodexRpc(home);
+        var rpc = new CodexRpc(home, migrateCredentials);
         try
         {
             await rpc.CallAsync("initialize", """{"clientInfo":{"name":"headroom","title":"Headroom","version":"2.0"}}""");
