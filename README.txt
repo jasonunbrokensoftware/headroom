@@ -28,6 +28,14 @@ an allowance has reset. Stale data is marked. Earned-reset counts and available
 expiration details are displayed; the app does not redeem resets or start model
 conversations.
 
+The overview totals each quota bucket/window separately across unique accounts,
+and sums earned resets. Percentages are normalized per account: two accounts
+with 50% remaining show 100% combined, with their average shown beneath it.
+This is not a token estimate; plan capacities can differ. Stale, unknown,
+disconnected, and due-for-reset quota readings are excluded and labeled.
+Duplicate account/workspace profiles count once using the freshest reading.
+Earned-reset totals use the authoritative count, not the number of detail rows.
+
 PORTABLE STORAGE
 
 Headroom.exe creates settings.json and a data folder beside itself, independent
@@ -126,9 +134,11 @@ src/Headroom. Account data, credentials, local tests' data, and compiled
 artifacts are excluded from Git. There is no remote configured.
 
 After publishing, run from the repository root:
-  artifacts/windows/Headroom.exe --self-test --integration-test
+  artifacts/single-exe/Headroom.exe --self-test --integration-test
   node tests/ui.mjs
+  node tests/totals.mjs
   node tests/backend.mjs
+  node tests/single-exe.mjs
 
 The JavaScript checks need a current Node.js version for development only.
 HEADROOM_TEST_EXE can point the backend test at another Headroom executable.

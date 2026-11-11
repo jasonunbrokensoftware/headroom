@@ -10,6 +10,21 @@
 <div class="bar"><div><p class="intro">Usage, countdowns, and earned resets.</p><span>{{ accounts.length }} account{{ accounts.length === 1 ? '' : 's' }} · refreshes every minute</span></div><div class="tools"><button @click="refreshAll" :disabled="refreshing || stopped">{{ refreshing ? 'Refreshing…' : 'Refresh all' }}</button><button class="primary" @click="add" :disabled="adding || !!login || stopped">{{ adding ? 'Opening sign-in…' : 'Sign in to another account' }}</button></div></div>
 <p v-if="error" class="error" role="alert">{{ error }}</p><p v-if="stopped" class="notice">Monitor stopped. Launch Headroom.exe to open it again.</p>
 <section v-if="!accounts.length && !stopped" class="empty"><h2>All your accounts, one place</h2><p>Sign in to get started. Email and workspace names appear automatically.</p></section>
+<section v-if="accounts.length" class="overview" aria-labelledby="overview-heading">
+<div class="overview-heading"><h2 id="overview-heading">Available across accounts</h2><span class="muted">{{ overview.fresh }} of {{ overview.accounts }} accounts up to date<span v-if="overview.duplicates"> · {{ overview.duplicates }} duplicate{{ overview.duplicates === 1 ? '' : 's' }} excluded</span></span></div>
+<div class="totals-grid">
+<article v-for="quota in overview.quotas" :key="quota.key" class="total-stat">
+<div class="spread"><strong>{{ quota.window }}</strong><span class="muted">{{ quota.bucket }}</span></div>
+<div class="total-value">{{ quota.total == null ? 'Unknown' : quota.total + '%' }}<small v-if="quota.total != null"> combined remaining</small></div>
+<progress v-if="quota.total != null" :max="quota.reporting * 100" :value="quota.total"></progress>
+<p class="muted">{{ quota.reporting }} of {{ overview.accounts }} accounts reporting<span v-if="quota.average != null"> · {{ quota.average }}% average</span></p>
+<p v-if="quota.resetsAt != null" class="muted">Next reset in <b>{{ countdown(quota.resetsAt) }}</b></p>
+<p v-if="quota.stale || quota.due" class="warning"><span v-if="quota.stale">{{ quota.stale }} stale or disconnected excluded. </span><span v-if="quota.due">{{ quota.due }} awaiting reset refresh.</span></p>
+</article>
+<article class="total-stat total-resets"><strong>Earned resets</strong><div class="total-value">{{ overview.resets.total ?? 'Unknown' }}<small v-if="overview.resets.total != null"> available</small></div><p class="muted">{{ overview.resets.reporting }} of {{ overview.accounts }} accounts reporting</p><p v-if="overview.resets.expiresAt != null" class="muted">Next expiration in <b>{{ countdown(overview.resets.expiresAt) }}</b></p></article>
+</div>
+<p class="totals-note">Percentages are added separately for each quota window: two accounts at 50% give 100% combined. Account allowances can differ by plan. Unknown and stale values are excluded.</p>
+</section>
 <main>
 <article v-for="account in accounts" :key="account.id" class="card">
 <div class="cardhead"><h2 class="account-email" :title="account.email || 'Sign-in pending'">{{ account.email || 'Sign-in pending' }}</h2><div class="cardmeta"><div class="identity" :title="account.workspaceId || ''">{{ account.workspace }}<span v-if="account.plan"> · {{ planName(account.plan) }}</span></div><span :class="['status', {stale: isStale(account), offline: needsSignIn(account)}]">{{ account.busy ? 'Working…' : needsSignIn(account) ? 'Sign in' : isStale(account) ? 'Stale' : 'Connected' }}</span></div></div>

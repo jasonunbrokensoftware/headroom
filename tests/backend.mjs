@@ -5,7 +5,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 
 const base = process.cwd();
-const exe = process.env.HEADROOM_TEST_EXE || path.join(base, 'artifacts/windows/Headroom.exe');
+const exe = process.env.HEADROOM_TEST_EXE || path.join(base, 'artifacts/single-exe/Headroom.exe');
 const data = process.env.HEADROOM_TEST_DATA || path.join(base, '.test-data/http-' + Date.now());
 await mkdir(data, { recursive: true });
 if (!process.env.HEADROOM_TEST_DATA) await writeFile(path.join(data, 'accounts.json'), JSON.stringify(Array.from({length:7}, (_,i)=>({id:randomUUID().replaceAll('-',''), name:'Obsolete custom name', email:`test${i}@example.com`, workspaceName:`Workspace ${i}`, workspaceId:`workspace-${i}`, plan:'business'}))));
@@ -30,6 +30,8 @@ try {
   const html = await (await fetch(origin + '/')).text();
   assert.ok(html.includes('<title>Headroom</title>') && html.includes('<h1>Headroom</h1>'));
   assert.ok((await (await fetch(origin + '/vue.js')).text()).includes('Vue'));
+  assert.ok(html.includes('Available across accounts'));
+  assert.ok((await (await fetch(origin + '/usage-totals.js')).text()).includes('summarizeUsage'));
   assert.equal((await fetch(origin + '/api/accounts')).status, 401);
   assert.equal((await fetch(origin + '/api/accounts', {headers:{'X-Session':key, Origin:'https://example.org'}})).status, 403);
   console.log('PASS embedded Vue assets and local API authentication');

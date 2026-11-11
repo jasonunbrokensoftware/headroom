@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import { summarizeUsage } from '../src/Headroom/wwwroot/usage-totals.js';
+const now = Date.now(), future = Math.ceil(now / 1000) + 600;
+const quota = (remaining, bucketId = 'codex', window = '5-hour', minutes = 300) => ({ bucketId, bucket: 'Codex', window, windowMinutes: minutes, remaining, resetsAt: future });
+const account = (id, remaining, resets = 0) => ({ id, email: id + '@example.com', workspaceId: 'personal-' + id,
+  signedIn: true, updatedAt: new Date(now).toISOString(), error: null,
+  usage: { quotas: [quota(remaining), quota(20, 'codex', 'Weekly', 10080)], resetCount: resets, resets: [{ expiresAt: future + 100 }] } });
+let accounts = [account('one', 75, 2), account('two', 50, 3), account('three', 0, 0)];
+let result = summarizeUsage(accounts, now);
+assert.equal(result.quotas[0].total, 125); assert.equal(result.quotas[0].average, 41.7);
+assert.equal(result.quotas[1].total, 60); assert.equal(result.resets.total, 5);
+assert.equal(result.resets.reporting, 3); assert.equal(result.resets.expiresAt, future + 100);
+console.log('PASS combined percentages, independent weekly totals, and earned resets');
+accounts.push({ ...account('duplicate', 100, 99), email: accounts[0].email.toUpperCase(), workspaceId: accounts[0].workspaceId, updatedAt: new Date(now - 1000).toISOString() });
+result = summarizeUsage(accounts, now);
+assert.equal(result.duplicates, 1); assert.equal(result.accounts, 3); assert.equal(result.quotas[0].total, 125); assert.equal(result.resets.total, 5);
+accounts.push({ ...account('other-workspace', 10, 1), email: accounts[0].email });
+assert.equal(summarizeUsage(accounts, now).quotas[0].total, 135);
+console.log('PASS duplicate profiles are counted once and different workspaces remain distinct');
+accounts = [account('one', null, null), { ...account('two', 90, 9), error: 'Timeout' },
+  { ...account('three', 80, 8), updatedAt: new Date(now - 100000).toISOString() }];
+result = summarizeUsage(accounts, now);
+assert.equal(result.quotas[0].total, null); assert.equal(result.resets.total, null);
+assert.equal(result.quotas[0].stale, 2); assert.equal(result.fresh, 1);
+accounts[0].usage.quotas[0].remaining = 0; accounts[0].usage.resetCount = 0;
+result = summarizeUsage(accounts, now);
+assert.equal(result.quotas[0].total, 0); assert.equal(result.resets.total, 0);
+accounts[0].usage.quotas[0].resetsAt = Math.floor(now / 1000) - 1;
+result = summarizeUsage(accounts, now);
+assert.equal(result.quotas[0].total, null); assert.equal(result.quotas[0].due, 1);
+console.log('PASS unknown, stale, zero, and due-for-reset values remain distinct');
+accounts = [account('one', 20), account('two', 30)];
+accounts[1].usage.quotas[0].bucketId = 'different-service-same-label';
+result = summarizeUsage(accounts, now);
+assert.equal(result.quotas.length, 3);
+assert.equal(result.quotas[0].total, 20);
+accounts[0].usage.quotas.push(accounts[0].usage.quotas[0]);
+assert.equal(summarizeUsage(accounts, now).quotas[0].total, 20);
+assert.equal(summarizeUsage([], now).resets.total, null);
+console.log('PASS independent quota IDs, repeated entries, and empty dashboards');

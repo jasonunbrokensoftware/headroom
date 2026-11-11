@@ -7,7 +7,8 @@ public record AccountConfig(string Id, string? Email = null, string? WorkspaceNa
 public record LoginInput(bool DeviceCode = false);
 public record Message(string Text);
 public record InstanceInfo(string Url);
-public record Quota(string Bucket, string Window, double? Remaining, long? ResetsAt, string? LimitReached);
+public record Quota(string Bucket, string Window, double? Remaining, long? ResetsAt, string? LimitReached,
+    string? BucketId = null, long? WindowMinutes = null, string? Slot = null);
 public record ResetCredit(string? Title, long? ExpiresAt);
 public record Usage(List<Quota> Quotas, int? ResetCount, List<ResetCredit>? Resets);
 public record LoginInfo(string AccountId, string Url, string? Code);
@@ -73,7 +74,7 @@ internal static class UsageParser
                 };
                 double? remaining = w.Field("usedPercent").TryDouble() is double used ? Math.Clamp(100 - used, 0, 100) : null;
                 quotas.Add(new(bucket.Field("limitName").Text() ?? id, window, remaining,
-                    w.Field("resetsAt").Number(), bucket.Field("rateLimitReachedType").Text()));
+                    w.Field("resetsAt").Number(), bucket.Field("rateLimitReachedType").Text(), id, minutes, field));
             }
         }
         var buckets = result.Field("rateLimitsByLimitId");

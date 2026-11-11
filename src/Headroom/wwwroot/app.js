@@ -1,4 +1,5 @@
 import { createApp } from './vue.js';
+import { summarizeUsage } from './usage-totals.js';
 
 const initial = location.hash.slice(1);
 if (initial) { sessionStorage.setItem('session', initial); history.replaceState(null, '', '/'); }
@@ -7,6 +8,7 @@ const token = sessionStorage.getItem('session');
 createApp({
   data: () => ({ accounts: [], login: null, error: '', maximized: false, now: Date.now(), stopped: false,
     refreshing: false, adding: false, copyStatus: '', poll: null, clock: null }),
+  computed: { overview() { return summarizeUsage(this.accounts, this.now); } },
   methods: {
     async api(path, method = 'GET', body) {
       const response = await fetch('/api' + path, { method, headers: { 'X-Session': token || '', 'Content-Type': 'application/json' },
