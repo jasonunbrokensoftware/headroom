@@ -8,9 +8,10 @@ public record LoginInput(bool DeviceCode = false);
 public record Message(string Text);
 public record InstanceInfo(string Url);
 public record Quota(string Bucket, string Window, double? Remaining, long? ResetsAt, string? LimitReached,
-    string? BucketId = null, long? WindowMinutes = null, string? Slot = null);
-public record ResetCredit(string? Title, long? ExpiresAt);
-public record Usage(List<Quota> Quotas, int? ResetCount, List<ResetCredit>? Resets);
+    string? BucketId = null, long? WindowMinutes = null, string? Slot = null, string? Plan = null);
+public record ResetCredit(string? Title, long? ExpiresAt, string? Id = null, string? ResetType = null);
+public record Usage(List<Quota> Quotas, int? ResetCount, List<ResetCredit>? Resets,
+    double? CreditBalance = null, bool CreditsUnlimited = false, bool? OrdinaryUsageAllowed = null);
 public record LoginInfo(string AccountId, string Url, string? Code);
 public record AccountView(string Id, string Name, string? Email, string Workspace, string? WorkspaceId, string? Plan, bool SignedIn,
     bool Busy, Usage? Usage, DateTimeOffset? UpdatedAt, string? Error);
@@ -74,7 +75,7 @@ internal static class UsageParser
                 };
                 double? remaining = w.Field("usedPercent").TryDouble() is double used ? Math.Clamp(100 - used, 0, 100) : null;
                 quotas.Add(new(bucket.Field("limitName").Text() ?? id, window, remaining,
-                    w.Field("resetsAt").Number(), bucket.Field("rateLimitReachedType").Text(), id, minutes, field));
+                    w.Field("resetsAt").Number(), bucket.Field("rateLimitReachedType").Text(), id, minutes, field, bucket.Field("planType").Text()));
             }
         }
         var buckets = result.Field("rateLimitsByLimitId");
@@ -86,9 +87,17 @@ internal static class UsageParser
         int? count = resets.Field("availableCount").Number() is long n ? checked((int)n) : null;
         List<ResetCredit>? credits = null;
         if (resets.Field("credits") is var details && details.ValueKind == JsonValueKind.Array)
-            credits = details.EnumerateArray().Where(c => c.Field("status").Text() is null or "available")
-                .Select(c => new ResetCredit(c.Field("title").Text(), c.Field("expiresAt").Number())).ToList();
-        return new(quotas, count, credits);
+            credits = details.EnumerateArray().Where(c => c.Field("status").Text() == "available")
+                .Select(c => new ResetCredit(c.Field("title").Text(), c.Field("expiresAt").Number(),
+                    c.Field("id").Text(), c.Field("resetType").Text())).ToList();
+        var main = buckets.Field("codex");
+        if (!main.Present()) main = result.Field("rateLimits");
+        var balance = main.Field("credits");
+        double? creditBalance = double.TryParse(balance.Field("balance").Text(), System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out double number) && double.IsFinite(number) && number >= 0 ? number : null;
+        if (creditBalance is null && balance.Field("hasCredits").ValueKind == JsonValueKind.False) creditBalance = 0;
+        bool? allowed = result.Field("ordinaryUsageAllowed").ValueKind switch { JsonValueKind.True => true, JsonValueKind.False => false, _ => null };
+        return new(quotas, count, credits, creditBalance, balance.Field("unlimited").ValueKind == JsonValueKind.True, allowed);
     }
 
     private static double? TryDouble(this JsonElement e) => e.ValueKind == JsonValueKind.Number &&
