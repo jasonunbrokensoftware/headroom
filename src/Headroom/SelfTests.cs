@@ -7,6 +7,7 @@ internal static class SelfTests
     public static async Task<int> RunAsync(bool integration)
     {
         void Check(bool pass, string text) { if (!pass) throw new Exception(text); Console.WriteLine("PASS " + text); }
+        HistoryTests.Run(Check);
         using var sample = JsonDocument.Parse("""
         {"ordinaryUsageAllowed":false,"rateLimitsByLimitId":{"codex":{"planType":"prolite","credits":{"balance":"12.5","hasCredits":true,"unlimited":false},"primary":{"usedPercent":25,"windowDurationMins":300,"resetsAt":5000},
         "secondary":{"usedPercent":100,"windowDurationMins":10080,"resetsAt":7000}},
@@ -39,7 +40,10 @@ internal static class SelfTests
         PortableCredentials.Prepare(portableHome);
         Check(File.ReadAllText(Path.Combine(portableHome, "config.toml")) == "cli_auth_credentials_store = \"file\"\n# preserve this\n", "Credential mode migration preserves other configuration");
         if (OperatingSystem.IsWindows())
+        {
+            Check(SystemTray.NativeDataSize == 976, "Native tray data matches the Windows x64 shell ABI without creating a tray icon");
             Check(NativeDesktop.WebViewRuntimeAvailable() == 1, "Statically linked Photino and WebView2 loader resolve the installed runtime without a window");
+        }
         string iconFile = AppIcon.WindowIcon(folder);
         byte[] iconBytes = File.ReadAllBytes(iconFile);
         Check(OperatingSystem.IsWindows()

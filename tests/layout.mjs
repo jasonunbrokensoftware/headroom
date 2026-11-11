@@ -25,6 +25,14 @@ const server = createServer(async (req,res) => {
     return;
   }
   if (req.url === '/api/refresh') { res.writeHead(204); res.end(); return; }
+  if (req.url === '/api/history') {
+    res.writeHead(200, {'Content-Type':'application/json'});
+    res.end(JSON.stringify({accounts:(state?.accounts||[]).map(a=>({accountId:a.id,identity:a.workspaceId,
+      tokens:{days:[{date:'2026-11-09',tokens:120000},{date:'2026-11-10',tokens:180000}],updatedAt:new Date(now).toISOString()},
+      points:[{at:now/1000-300,remaining:50,resets:2},{at:now/1000,remaining:47,resets:2}],
+      observedDays:[{date:'2026-11-11',plan:a.plan,consumedPercent:10,coveredSeconds:36000}],startedAt:now/1000-86400,error:null}))}));
+    return;
+  }
   const file = path.resolve(root, req.url === '/' ? 'index.html' : '.' + req.url);
   if (!file.startsWith(root + path.sep)) { res.writeHead(404); res.end(); return; }
   try { const data = await readFile(file); res.writeHead(200, {'Content-Type':mime[path.extname(file)] || 'application/octet-stream'}); res.end(data); }
@@ -37,12 +45,21 @@ try {
   const page = await browser.newPage({viewport:{width:1200,height:800}});
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.addInitScript(value => { Date.now = () => value; }, now);
+  await page.addInitScript(value => {
+    Date.now = () => value;
+    let listener;
+    window.bridgeMessages=[];
+    Object.defineProperty(window,'external',{value:{receiveMessage:fn=>listener=fn,sendMessage:message=>{
+      window.bridgeMessages.push(JSON.parse(message));
+      if(JSON.parse(message).action==='ready') queueMicrotask(()=>listener('window:tray'));
+    }}});
+  }, now);
   await page.goto(`http://127.0.0.1:${server.address().port}/`, {waitUntil:'domcontentloaded'});
   await page.locator('.startup').waitFor();
   assert.equal(await page.locator('.empty,.card,.metric-value').count(),0);
   assert.equal(await page.locator('.startup .skeleton').count() > 0,true);
   assert.equal(await page.getByRole('button',{name:'Sign in to another account',exact:true}).isDisabled(),true);
+  assert.equal(await page.getByRole('button',{name:'Hide to tray',exact:true}).count(),1);
   const pending = fixture.map(a=>({...a,signedIn:false,updatedAt:null,usage:null}));
   state = {accounts:pending,login:null}; hold = false; held.splice(0).forEach(send=>send());
   await page.locator('.card').first().waitFor();
@@ -50,6 +67,7 @@ try {
   assert.equal(await page.locator('.overview .metric-value,.card .count,.quota-value').count(),0);
   assert.equal(await page.getByRole('button',{name:'Sign in',exact:true}).count(),0);
   assert.equal(await page.locator('.overview .skeleton-value').count(),3);
+  assert.equal(await page.locator('.forecast-value').count(),0);
   await page.emulateMedia({reducedMotion:'reduce'});
   assert.equal(await page.locator('.skeleton').first().evaluate(el=>getComputedStyle(el).animationName),'none');
   await page.emulateMedia({reducedMotion:'no-preference'});
@@ -63,6 +81,10 @@ try {
   await publish(fixture);
   await page.locator('.metric-primary .metric-value').waitFor();
   assert.match(await page.locator('.metric-primary .metric-value').innerText(),/3\.53/);
+  await page.locator('.forecast-panel').waitFor();
+  assert.equal(await page.locator('.history-charts svg').count(),2);
+  assert.equal(await page.locator('.chart-legend>span').count(),3);
+  assert.ok((await page.locator('.forecast-value').innerText()).includes('days'));
   assert.equal(await page.locator('.status.loading').count(),0);
   assert.equal(await page.locator('.quota-alert.visible').innerText(),'Allowance used up');
   assert.match(await page.locator('.quota-value').first().innerText(),/^0%/);
@@ -95,6 +117,19 @@ try {
   await page.locator('.methodology summary').click();
   assert.equal(await page.locator('.breakdown tbody tr').count(),3);
   console.log('PASS expanded expiration dates keep card footers aligned; calculation breakdown is available');
+  await page.getByLabel('Balance history metric').selectOption('resets');
+  assert.equal(await page.locator('.chart-card h3').last().innerText(),'Banked resets');
+  await page.locator('.history-controls select').first().selectOption('two');
+  assert.equal(await page.locator('.chart-legend>span').count(),1);
+  await page.locator('.history-controls select').first().selectOption('all');
+  await page.locator('.forecast-controls input[type=checkbox]').uncheck();
+  await page.locator('.forecast-controls input[type=checkbox]').check();
+  console.log('PASS account-wide history graphs, account filtering, reset history, and runway controls');
+  await page.getByRole('button',{name:'History & forecast',exact:true}).click();
+  assert.ok(await page.locator('.content').evaluate(el=>el.scrollTop)>0);
+  await page.getByRole('button',{name:'Hide to tray',exact:true}).click();
+  assert.equal(await page.evaluate(()=>window.bridgeMessages.at(-1).action),'close');
+  console.log('PASS tray-aware close label and navigation bridge without a desktop window');
 
   const many = Array.from({length:8}, (_,i)=>({...fixture[i%3], id:`many-${i}`, workspaceId:`many-${i}`}));
   await publish(many);

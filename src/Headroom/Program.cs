@@ -97,7 +97,8 @@ foreach (var (route, resource, type) in new[] {
     ("/", "index.html", "text/html; charset=utf-8"), ("/app.js", "app.js", "text/javascript; charset=utf-8"),
     ("/style.css", "style.css", "text/css; charset=utf-8"), ("/vue.js", "vue.js", "text/javascript; charset=utf-8"),
     ("/headroom.svg", "headroom.svg", "image/svg+xml"),
-    ("/usage-totals.js", "usage-totals.js", "text/javascript; charset=utf-8") })
+    ("/usage-totals.js", "usage-totals.js", "text/javascript; charset=utf-8"),
+    ("/usage-history.js", "usage-history.js", "text/javascript; charset=utf-8") })
 {
     using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("web/" + resource)
         ?? throw new InvalidOperationException("Missing embedded UI: " + resource);
@@ -110,6 +111,7 @@ app.MapGet("/api/accounts", () =>
     return Results.Json(accounts.Snapshot(), AppJson.Default.DashboardView);
 });
 app.MapPost("/api/accounts/login", async (LoginInput input) => Results.Json(await accounts.AddAndLoginAsync(input.DeviceCode), AppJson.Default.LoginInfo));
+app.MapGet("/api/history", () => Results.Json(accounts.History(), AppJson.Default.HistoryView));
 app.MapDelete("/api/accounts/{id}", async (string id) => { await accounts.RemoveAsync(id); return Results.NoContent(); });
 app.MapPost("/api/accounts/{id}/refresh", async (string id) => { await accounts.RefreshAsync(id); return Results.NoContent(); });
 app.MapPost("/api/refresh", async () => { await accounts.RefreshAllAsync(); return Results.NoContent(); });

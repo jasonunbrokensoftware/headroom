@@ -32,11 +32,17 @@ try {
   assert.ok((await (await fetch(origin + '/vue.js')).text()).includes('Vue'));
   assert.ok(html.includes('Available across accounts'));
   assert.ok((await (await fetch(origin + '/usage-totals.js')).text()).includes('summarizeUsage'));
+  assert.ok((await (await fetch(origin + '/usage-history.js')).text()).includes('forecastUsage'));
+  assert.equal((await fetch(origin + '/api/history')).status, 401);
   assert.equal((await fetch(origin + '/api/accounts')).status, 401);
   assert.equal((await fetch(origin + '/api/accounts', {headers:{'X-Session':key, Origin:'https://example.org'}})).status, 403);
   console.log('PASS embedded Vue assets and local API authentication');
   let state = await api('/accounts');
   assert.equal(state.accounts.length, 7);
+  const history = await api('/history');
+  assert.equal(history.accounts.length,7);
+  assert.ok(history.accounts.every(a=>a.tokens.days===null && a.points.length===0));
+  console.log('PASS authenticated history endpoint preserves unknown and empty history for isolated profiles');
   const first = state.accounts[0];
   assert.equal(first.name, 'test0@example.com · Workspace 0');
   assert.equal((await fetch(origin + '/api/accounts/' + first.id, {method:'PUT', headers:{'X-Session':key,'Content-Type':'application/json'},body:JSON.stringify({name:'Manual name'})})).status,405);

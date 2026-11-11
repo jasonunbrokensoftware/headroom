@@ -18,12 +18,14 @@ internal sealed class AccountManager : IAsyncDisposable
     private readonly SemaphoreSlim workers = new(4, 4);
     private readonly SemaphoreSlim loginGate = new(1, 1);
     private readonly string directory;
+    private readonly UsageHistory history;
     private PendingLogin? login;
     private Task? loginTask;
     private bool stopping;
     public AccountManager(string directory)
     {
         this.directory = directory;
+        history = new(directory);
         Directory.CreateDirectory(directory);
         string path = Path.Combine(directory, "accounts.json");
         if (File.Exists(path))
@@ -42,6 +44,12 @@ internal sealed class AccountManager : IAsyncDisposable
         File.Move(path + ".tmp", path, true);
     }
     public DashboardView Snapshot() { lock (sync) return new(entries.Values.Select(e => e.View).ToList(), login?.Info); }
+    public HistoryView History()
+    {
+        List<AccountConfig> all;
+        lock (sync) all = entries.Values.Where(e => e.Config.Email is not null).Select(e => e.Config).ToList();
+        return new(all.Select(account => history.Read(account, DateTimeOffset.UtcNow)).ToList());
+    }
     internal AccountView Add(bool signingUp = false)
     {
         lock (sync)
@@ -109,6 +117,20 @@ internal sealed class AccountManager : IAsyncDisposable
                 }
                 var usage = signedIn ? UsageParser.Parse(await rpc.CallAsync("account/rateLimits/read")) : null;
                 lock (sync) e.View = e.View with { Usage = usage, UpdatedAt = DateTimeOffset.UtcNow };
+                if (signedIn && usage is not null)
+                {
+                    try
+                    {
+                        history.Record(e.Config, usage, DateTimeOffset.UtcNow);
+                        if (history.NeedsTokens(e.Config, DateTimeOffset.UtcNow))
+                            history.ImportTokens(e.Config, await rpc.CallAsync("account/usage/read"), DateTimeOffset.UtcNow);
+                    }
+                    catch
+                    {
+                        try { history.SetError(e.Config, "History could not be updated. Current usage is still available; the next refresh will retry."); }
+                        catch { } // A history storage failure must not invalidate a successful live reading.
+                    }
+                }
             }
             finally { workers.Release(); }
         }

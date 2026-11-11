@@ -27,6 +27,10 @@ public record DashboardView(List<AccountView> Accounts, LoginInfo? Login);
 [JsonSerializable(typeof(AccountView))]
 [JsonSerializable(typeof(LoginInfo))]
 [JsonSerializable(typeof(string))]
+[JsonSerializable(typeof(string[]))]
+[JsonSerializable(typeof(UsageObservation))]
+[JsonSerializable(typeof(TokenHistory))]
+[JsonSerializable(typeof(HistoryView))]
 internal partial class AppJson : JsonSerializerContext;
 
 internal static class AccountIdentity

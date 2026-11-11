@@ -9,7 +9,7 @@ const context = vm.createContext({
   location:{hash:''}, sessionStorage:{getItem:()=>''}, Date, JSON, Math, isAccountLoading,
   window:{external:{sendMessage:message=>messages.push(JSON.parse(message))}}
 });
-vm.runInContext((await readFile(root+'app.js','utf8')).replace("import { createApp } from './vue.js';",'').replace("import { summarizeUsage, isAccountLoading } from './usage-totals.js';",''), context);
+vm.runInContext((await readFile(root+'app.js','utf8')).replace(/^import .*;$/gm,''), context);
 const app = options.data();
 for (const [key,value] of Object.entries(options.methods)) app[key] = value.bind(app);
 app.api = async (route,method) => { calls.push([route,method]); return route === '/accounts/login' ? {url:'https://example.org/sign-in'} : null; };

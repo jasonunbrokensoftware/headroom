@@ -145,6 +145,47 @@ settings.json to an absolute path or a path relative to Headroom.exe, for exampl
 The default {"codexPath":null} enables automatic discovery. No registry setting,
 user-profile configuration file, or environment variable is needed by Headroom.
 Diagnostic --data-dir paths are also relative to the executable unless absolute.
+
+HISTORY AND RUNWAY
+
+Daily token activity is downloaded from the official Codex account/usage/read
+endpoint for each signed-in account, on startup and at most every 15 minutes.
+It covers the account's service-reported usage across machines, not local chat
+logs. Available dates are merged into data/history; repeated downloads replace
+that date's value rather than adding it. Missing dates are not invented zeroes.
+Up to 730 reported dates are retained per account/workspace. Service data can lag.
+
+Headroom also records account-wide allowance and reset balances locally. Changes
+are sampled at most once per minute; unchanged readings are saved every five
+minutes. The portable append log retains 90 days. This captures activity on
+other computers while this Headroom instance is running and connected. It cannot
+reconstruct every past allowance change while it was stopped. Graphs preserve
+gaps and can show 7, 30, or 90 days, all accounts or a selected account, and either
+remaining weekly percentage or banked resets. Graphs never count duplicate
+account/workspace profiles twice. Histories contain usage statistics, not chats.
+
+The runway estimate measures weighted allowance declines from recent readings.
+It excludes gaps longer than ten minutes, refills, changed reset balances,
+changed plans, and unknown readings. Observed idle/exhausted intervals count as
+zero-use time, preventing account switching from inflating the pooled rate.
+Demand blocked by limits is unknowable and may make the estimate optimistic. After at least
+six monitored hours and measurable use, it uses that observed pace. Until then,
+the current weekly window's consumed fraction divided by elapsed window time is
+shown explicitly as an early estimate (requires a window at least six hours old).
+Token counts are never converted directly into subscription capacity. Exhausted
+periods can hide demand, so an early estimate can understate desired usage.
+
+The 30-day projection spends the soonest-refilling/expiring account capacity
+first, allows switching accounts, and models known weekly refills and existing
+verified full resets. Earned resets are redeemed only after that account is
+exhausted, before expiry, and move its next weekly refill seven days forward.
+No future earned resets or purchased credits are assumed. Shorter limits may
+interrupt sooner. Unknown/stale/unsupported accounts prevent an overall forecast;
+select a supported account to see its estimate. The pace selector and banked-reset
+checkbox are scenarios, not changes to any service allowance or reset redemption.
+No resets are actually redeemed by Headroom. "30+ days" is the forecast horizon,
+not a promise of unlimited capacity. The faster-use comparison is a scenario,
+not a statistical confidence interval.
 Credential migration uses .NET cryptography and Bouncy Castle 2.6.2 for scrypt;
 its license is preserved in src/Headroom/BouncyCastle-LICENSE.txt and embedded
 in the EXE. The migration never prints tokens or changes the main Codex login.
@@ -162,6 +203,7 @@ After publishing, run from the repository root:
   artifacts/single-exe/Headroom.exe --self-test --integration-test
   node tests/ui.mjs
   node tests/totals.mjs
+  node tests/history.mjs
   node tests/backend.mjs
   node tests/single-exe.mjs
 
