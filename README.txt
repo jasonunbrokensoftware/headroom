@@ -28,10 +28,20 @@ an allowance has reset. Stale data is marked. Earned-reset counts and available
 expiration details are displayed; the app does not redeem resets or start model
 conversations.
 
-Accounts and local instance state are saved under app\data. Each account has
-an isolated Codex home; Codex protects credentials with the OS credential
-store (including encrypted local auth files in current CLI versions).
-Keep the app folder in the same place after signing in. Removing an account
+PORTABLE STORAGE
+
+Headroom.exe creates settings.json and a data folder beside itself, independent
+of the working directory or shortcut's Start in location. Accounts, their Codex
+configuration and sign-ins, webview profile, icon cache, and monitoring state
+stay under data. Move or copy the EXE together with settings.json and data.
+Each account uses an isolated Codex home with file-based auth.json credentials.
+Treat the data folder as private: these files contain your sign-in tokens.
+Existing Windows keyring/encrypted-age sign-ins migrate to local files on the
+first refresh at their original location; the old Windows entries are left
+untouched. Reopen this updated build before moving an existing installation.
+Once migrated, account sign-ins no longer depend on their absolute folder path
+or Windows Credential Manager. Linux builds use the same file storage.
+Removing an account
 signs out only its dashboard connection. It does not change your main Codex
 login. The dashboard listens only on 127.0.0.1 and protects API calls with a
 random session token. Login credentials never go through the Vue frontend.
@@ -66,8 +76,8 @@ machine with the .NET 10 SDK and Native AOT prerequisites installed:
 The Linux executable uses GTK 3 and WebKitGTK 4.1 for its desktop window, plus
 xdg-open for account sign-in and the installed Codex CLI. On Ubuntu, install
 libgtk-3-0 and libwebkit2gtk-4.1-0 (package names may vary by distribution).
-Keep Photino.Native.so next to the executable. Codex's keyring mode requires a
-working desktop credential store. Linux has not been built or tested in this
+Keep Photino.Native.so next to the executable. No desktop credential store is
+required for new portable profiles. Linux has not been built or tested in this
 Windows environment. Native AOT publishing must be performed on the target OS;
 the Windows EXE cannot itself run on Linux.
 
@@ -94,8 +104,20 @@ Vue template compilation, and isolated backend tests. No desktop automation
 or screen capture was used. Native title-bar interactions and Linux remain
 for manual testing.
 
-Set HEADROOM_CODEX_PATH to an explicit Codex executable if auto-discovery
-cannot locate your installation.
+The Codex CLI and Windows WebView2 runtime must still be available on the target
+machine. Codex is discovered beside Headroom.exe, in tools/codex.exe, on PATH,
+or in its normal installation folder. To override discovery, set codexPath in
+settings.json to an absolute path or a path relative to Headroom.exe, for example:
+  {"codexPath":"tools/codex.exe"}
+The default {"codexPath":null} enables automatic discovery. No registry setting,
+user-profile configuration file, or environment variable is needed by Headroom.
+Diagnostic --data-dir paths are also relative to the executable unless absolute.
+Credential migration uses .NET cryptography and Bouncy Castle 2.6.2 for scrypt;
+its license is preserved in src/Headroom/BouncyCastle-LICENSE.txt and embedded
+in the EXE. The migration never prints tokens or changes the main Codex login.
+For the isolated Windows migration/relocation test, set HEADROOM_TEST_CODEX to
+the installed Codex executable and run node tests/portable.mjs. It creates and
+cleans up a disposable fake credential and never sends a model request.
 
 REPOSITORY AND CHECKS
 
@@ -111,7 +133,8 @@ After publishing, run from the repository root:
 The JavaScript checks need a current Node.js version for development only.
 HEADROOM_TEST_EXE can point the backend test at another Headroom executable.
 The delivered Windows app and saved account data are in the Headroom output
-folder. Keep that app/data folder at its installed path to preserve sign-ins.
+folder. Move that app/data folder together with the EXE after the first refresh
+has migrated any older sign-ins. New accounts are portable from their first login.
 
 ICON
 

@@ -40,7 +40,8 @@ internal static class Program
         DesktopWindow desktop, CancellationToken shutdown)
     {
 string? Option(string name) { int i = Array.IndexOf(args, name); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
-string data = Path.GetFullPath(Option("--data-dir") ?? Path.Combine(AppContext.BaseDirectory, "data"));
+string data = PortableStorage.DataDirectory(Option("--data-dir"));
+_ = PortableStorage.Settings();
 Directory.CreateDirectory(data);
 if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(data, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
 string instancePath = Path.Combine(data, "instance.json");

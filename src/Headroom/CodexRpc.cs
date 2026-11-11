@@ -18,8 +18,18 @@ internal sealed class CodexRpc : IAsyncDisposable
     public static string FindExecutable()
     {
         var name = OperatingSystem.IsWindows() ? "codex.exe" : "codex";
-        var specified = Environment.GetEnvironmentVariable("HEADROOM_CODEX_PATH");
-        if (!string.IsNullOrEmpty(specified) && File.Exists(specified)) return specified;
+        var specified = PortableStorage.Settings().CodexPath;
+        if (!string.IsNullOrWhiteSpace(specified))
+        {
+            string configured = Path.GetFullPath(specified, AppContext.BaseDirectory);
+            if (File.Exists(configured)) return configured;
+            throw new InvalidOperationException("The Codex path in settings.json was not found.");
+        }
+        foreach (string relative in new[] { name, Path.Combine("tools", name) })
+        {
+            string portable = Path.Combine(AppContext.BaseDirectory, relative);
+            if (File.Exists(portable)) return portable;
+        }
         foreach (var folder in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
         {
             var path = Path.Combine(folder.Trim('"'), name);
@@ -43,14 +53,13 @@ internal sealed class CodexRpc : IAsyncDisposable
             var standalone = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "bin", name);
             if (File.Exists(standalone)) return standalone;
         }
-        throw new InvalidOperationException("Codex CLI was not found. Install Codex or set HEADROOM_CODEX_PATH to its executable.");
+        throw new InvalidOperationException("Codex CLI was not found. Install Codex, place it in the tools folder beside Headroom.exe, or set codexPath in settings.json.");
     }
 
     private CodexRpc(string home)
     {
         Directory.CreateDirectory(home);
-        string config = Path.Combine(home, "config.toml");
-        if (!File.Exists(config)) File.WriteAllText(config, "cli_auth_credentials_store = \"keyring\"\n");
+        PortableCredentials.Prepare(home);
         var start = new ProcessStartInfo(FindExecutable())
         {
             WorkingDirectory = home, UseShellExecute = false, CreateNoWindow = true,
@@ -58,8 +67,12 @@ internal sealed class CodexRpc : IAsyncDisposable
             StandardInputEncoding = new UTF8Encoding(false), StandardOutputEncoding = Encoding.UTF8
         };
         start.ArgumentList.Add("app-server"); start.ArgumentList.Add("--listen"); start.ArgumentList.Add("stdio://");
+        start.ArgumentList.Add("-c"); start.ArgumentList.Add("cli_auth_credentials_store=\"file\"");
         start.Environment["CODEX_HOME"] = home;
         start.Environment["CODEX_SQLITE_HOME"] = home;
+        string temporary = Path.Combine(home, "tmp");
+        Directory.CreateDirectory(temporary);
+        foreach (string key in new[] { "TEMP", "TMP", "TMPDIR" }) start.Environment[key] = temporary;
         foreach (string key in new[] { "OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_ACCESS_TOKEN", "CODEX_REMOTE", "CODEX_REMOTE_TOKEN" })
             start.Environment.Remove(key);
         process = Process.Start(start) ?? throw new InvalidOperationException("Could not start Codex.");

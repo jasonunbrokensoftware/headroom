@@ -21,10 +21,12 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Photino.NET" Version="4.0.16" />
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
     <Content Remove="wwwroot/**" />
     <EmbeddedResource Include="wwwroot/*" LogicalName="web/%(Filename)%(Extension)" />
     <EmbeddedResource Include="Assets/headroom.ico" LogicalName="brand.headroom.ico" />
     <EmbeddedResource Include="Assets/headroom.png" LogicalName="brand.headroom.png" />
+    <EmbeddedResource Include="BouncyCastle-LICENSE.txt" LogicalName="licenses/BouncyCastle.txt" />
   </ItemGroup>
   <ItemGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" GeneratePathProperty="true" ExcludeAssets="all" PrivateAssets="all" />

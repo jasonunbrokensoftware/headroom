@@ -27,6 +27,13 @@ internal static class SelfTests
         Check(AccountIdentity.Workspace(identity with { WorkspaceName = null, WorkspaceId = null }) == "Workspace unavailable", "Missing business workspace is not invented");
         Check(WindowGestures.HitTest("nw") == (13, 0) && WindowGestures.HitTest("se") == (17, 7) && WindowGestures.HitTest("bad").Windows == 0, "Cross-platform resize mapping and invalid gesture rejection");
         string folder = Path.Combine(Path.GetTempPath(), "HeadroomTests", Guid.NewGuid().ToString("N"));
+        Check(PortableStorage.DataDirectory(null) == Path.Combine(AppContext.BaseDirectory, "data"), "Portable data is relative to the executable");
+        string portableHome = Path.Combine(folder, "portable");
+        PortableCredentials.Prepare(portableHome);
+        Check(File.ReadAllText(Path.Combine(portableHome, "config.toml")).Contains("cli_auth_credentials_store = \"file\""), "New accounts use portable credential storage");
+        File.WriteAllText(Path.Combine(portableHome, "config.toml"), "cli_auth_credentials_store = \"keyring\"\n# preserve this\n");
+        PortableCredentials.Prepare(portableHome);
+        Check(File.ReadAllText(Path.Combine(portableHome, "config.toml")) == "cli_auth_credentials_store = \"file\"\n# preserve this\n", "Credential mode migration preserves other configuration");
         if (OperatingSystem.IsWindows())
             Check(NativeDesktop.WebViewRuntimeAvailable() == 1, "Statically linked Photino and WebView2 loader resolve the installed runtime without a window");
         string iconFile = AppIcon.WindowIcon(folder);

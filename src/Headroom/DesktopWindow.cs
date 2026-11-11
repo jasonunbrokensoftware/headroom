@@ -16,6 +16,10 @@ internal sealed class DesktopWindow
     // Called on the application's original STA thread, also the GTK main thread on Linux.
     public void Run(DesktopStart start, Action stop)
     {
+        // WebView2's environment override takes precedence over its API parameter.
+        // Keep the profile in the portable folder even if the parent process sets it.
+        if (OperatingSystem.IsWindows())
+            Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", Path.Combine(start.DataDirectory, "webview"));
         window = new PhotinoWindow()
             .SetLogVerbosity(0)
             .SetTitle("Headroom")
