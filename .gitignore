@@ -8,6 +8,10 @@ data/
 **/accounts.json
 **/instance.json
 **/instance.lock
+**/settings.json
+**/settings.json.tmp
+.env
+.env.*
 *.pdb
 *.user
 *.suo

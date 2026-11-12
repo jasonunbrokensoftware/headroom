@@ -18,7 +18,7 @@ the Vue production library and all UI assets. Photino.NET hosts the interface
 using WebView2 on Windows and WebKitGTK on Linux. Windows builds statically link
 Photino and the WebView2 loader: distribute Headroom.exe alone, with no DLLs
 alongside it or extracted at startup. The Microsoft Edge WebView2 runtime
-must be installed (it is installed on this machine). Python, Node.js, a separate
+must be installed. Python, Node.js, a separate
 .NET runtime, a launcher script, and an internet CDN are not required to run it.
 The official Codex CLI must be installed; it manages sign-in and usage reads.
 
@@ -198,9 +198,11 @@ cleans up a disposable fake credential and never sends a model request.
 
 REPOSITORY AND CHECKS
 
-The local Git repository is C:\Source\headroom. Application source is under
-src/Headroom. Account data, credentials, local tests' data, and compiled
-artifacts are excluded from Git. There is no remote configured.
+The public repository is https://github.com/jasonunbrokensoftware/headroom.
+Application source is under src/Headroom. Account data, credentials, local
+configuration, tests' data, and compiled artifacts are excluded from Git.
+Headroom's original code and artwork use the MIT license in LICENSE.
+Third-party components retain the licenses listed in THIRD_PARTY_NOTICES.md.
 
 After publishing, run from the repository root:
   artifacts/single-exe/Headroom.exe --self-test --integration-test
