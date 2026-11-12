@@ -32,7 +32,8 @@ async function trayHost() {
 }
 async function run(background,withTray) {
   await writeFile(path.join(directory,'settings.json'),JSON.stringify({theme:'ember',startWithWindows:false}));
-  const child=spawn(executable,['--desktop-test',...(background?['--background']:[])],{env,stdio:['ignore','pipe','pipe']});
+  const appEnv=process.env.HEADROOM_KWIN_TEST==='1'?{...env,WAYLAND_DEBUG:'client'}:env;
+  const child=spawn(executable,['--desktop-test',...(background?['--background']:[])],{env:appEnv,stdio:['ignore','pipe','pipe']});
   let errors='';child.stderr.on('data',b=>errors+=b);
   const done=new Promise(resolve=>child.on('exit',resolve));
   let origin,key;
@@ -57,8 +58,14 @@ async function run(background,withTray) {
     assert.ok(sawUnpainted,'Observed the production pre-paint state');
     assert.equal(flags&1,0,'Vue and WebKit finish startup');
     assert.equal(flags&12,0,'Temporary opacity and taskbar hints are restored');
+    assert.equal(flags&96,0,'Native decorations and the GTK titlebar stay hidden');
     assert.equal(!!(flags&16),withTray,'Tray availability reflects the host');
     assert.equal(!!(flags&2),!background||!withTray,'Background uses tray only, with a window fallback when no tray exists');
+    if(process.env.HEADROOM_KWIN_TEST==='1') {
+      const modes=[...errors.matchAll(/org_kde_kwin_server_decoration[@#]\d+\.request_mode\((\d+)\)/g)].map(m=>Number(m[1]));
+      assert.ok(modes.length>0,'KWin decoration protocol was exercised');
+      assert.ok(modes.every(mode=>mode===1),'Headroom requests client decorations, never a second server title bar: '+modes.join(','));
+    }
     await api('/window/activate','POST');
     assert.ok(Number(await api('/window/test-state'))&2);
     if(withTray){
@@ -66,6 +73,7 @@ async function run(background,withTray) {
       assert.equal(Number(await api('/window/test-state'))&2,0,'Close hides to tray');
       await api('/window/test-action/5','POST');
       assert.ok(Number(await api('/window/test-state'))&2,'About reopens the window');
+      assert.equal(Number(await api('/window/test-state'))&96,0,'Tray activation preserves the custom frame');
       await api('/window/test-action/3','POST');
       const desktop=await readFile(path.join(config,'autostart/headroom.desktop'),'utf8');
       assert.ok(desktop.includes('--background')&&desktop.includes('Terminal=false'));

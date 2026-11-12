@@ -35,6 +35,14 @@ void watcherVanished(GDBusConnection*, const gchar*, gpointer) {
 void Headroom_BeginLinuxStartup(GtkWidget* host) {
     window = host;
     starting = true;
+    // decorated=false alone does not announce client-side decorations on
+    // Wayland: GTK can still ask KWin for a server title bar. A custom titlebar
+    // opts into client decorations before realization; keep its placeholder
+    // hidden because Vue already draws the entire frame.
+    GtkWidget* titlebar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_widget_set_no_show_all(titlebar, TRUE);
+    gtk_window_set_titlebar(GTK_WINDOW(window), titlebar);
+    gtk_window_set_decorated(GTK_WINDOW(window), FALSE);
     // A mapped WebKit view renders while its GTK surface is transparent.
     // Keep the temporary surface out of task switching and unable to take focus.
     gtk_widget_set_opacity(window, 0);
@@ -148,7 +156,10 @@ extern "C" int Headroom_LinuxWindowState() {
     return (starting ? 1 : 0) | (gtk_widget_get_visible(window) ? 2 : 0) |
         (gtk_widget_get_opacity(window) == 0 ? 4 : 0) |
         (gtk_window_get_skip_taskbar_hint(GTK_WINDOW(window)) ? 8 : 0) |
-        (Headroom_LinuxTrayAvailable() ? 16 : 0);
+        (Headroom_LinuxTrayAvailable() ? 16 : 0) |
+        (gtk_window_get_decorated(GTK_WINDOW(window)) ? 32 : 0) |
+        (gtk_window_get_titlebar(GTK_WINDOW(window)) &&
+            gtk_widget_get_visible(gtk_window_get_titlebar(GTK_WINDOW(window))) ? 64 : 0);
 }
 extern "C" void Headroom_LinuxTestMenu(int command) {
     if (command == 3 && startup) gtk_menu_item_activate(GTK_MENU_ITEM(startup));

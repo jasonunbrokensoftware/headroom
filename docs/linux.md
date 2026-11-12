@@ -61,8 +61,11 @@ The native desktop tests additionally require Node.js, GIO development headers, 
 ```sh
 bash tools/Test-Linux-Desktop.sh x11
 bash tools/Test-Linux-Desktop.sh wayland
+bash tools/Test-Linux-Desktop.sh kwin
 ```
 
-They exercise real WebKit/Vue startup, the pre-paint visibility gate, foreground and background launches, tray registration and actions, About activation, startup preference persistence, no-tray fallback, and the generated launcher through GIO. The suite uses no desktop automation or screen capture. It does not replace manual testing of compositor-specific window gestures or visual rendering on every distribution.
+The optional `kwin` mode requires `kwin_wayland` and runs a separate virtual KDE compositor with private settings. It verifies actual Wayland protocol requests use client decorations, so KDE does not add a duplicate title bar.
+
+These tests exercise real WebKit/Vue startup, the pre-paint visibility gate, foreground and background launches, tray registration and actions, About activation, startup preference persistence, no-tray fallback, and the generated launcher through GIO. The suite uses no desktop automation or screen capture. It does not replace manual testing of compositor-specific window gestures or visual rendering on every distribution.
 
 `HEADROOM_TEST_EXE` can select another published binary. `HEADROOM_NATIVE_CFLAGS`, `CXX`, `PKG_CONFIG_PATH`, and standard compiler/linker environment variables support development toolchains installed outside system directories. The test helper and native build script are development tools, not app launchers.

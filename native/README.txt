@@ -29,8 +29,14 @@ Photino.Native.so sidecar. GTK 3, WebKitGTK 4.1, libnotify, and X11 remain norma
 system dependencies. AppIndicator support is discovered dynamically at runtime.
 Headroom's Linux changes use an ephemeral WebKit profile, set the application
 identity, and defer window visibility until Vue's initial view has painted.
+The Linux adapter registers a hidden custom GTK titlebar before realization to
+announce client-side decorations on Wayland. Simply setting decorated=false
+leaves GTK requesting a KDE server titlebar, duplicating Vue's custom header.
+GTK's supported API is documented here:
+https://docs.gtk.org/gtk3/method.Window.set_titlebar.html
 The adapter adds the GTK/AppIndicator tray, background activation, and optional
-test hooks exercised only on isolated Xvfb/Weston displays with a private D-Bus.
+test hooks exercised only on isolated Xvfb/Weston/KWin displays with a private
+D-Bus. KWin tests inspect the actual Wayland decoration protocol requests.
 
 Headroom.Taskbar.cpp keeps Windows shell COM calls inside the statically linked
 adapter. It synchronizes this EXE's existing taskbar pins and window relaunch
