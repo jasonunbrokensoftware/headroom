@@ -7,6 +7,7 @@
     <RootNamespace>Headroom</RootNamespace>
     <Product>Headroom</Product>
     <Title>Headroom</Title>
+    <Copyright>Copyright (c) 2026 Jason Carr</Copyright>
     <Description>All your AI usage. One place.</Description>
     <ApplicationIcon>Assets/headroom-graphite.ico</ApplicationIcon>
     <ImplicitUsings>enable</ImplicitUsings>
