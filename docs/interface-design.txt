@@ -72,6 +72,16 @@ The page's loading icon and favicon are selected before first paint. Theme saves
 update the native window and tray on the UI thread; failures roll back the saved
 theme and interface. Windows icons use owned handles that are released on changes
 and shutdown, rather than repeatedly asking Photino for shared file icons.
+The EXE's embedded icon uses Ember. Its ten published RT_ICON resources are
+compared byte-for-byte with the Ember ICO during the single-EXE check.
+The Windows adapter supplies a full-size, DPI-scaled HICON to both the large
+and small window-icon slots. Headroom has no native caption requiring a tiny
+source. At 150% scaling this supplies 48px to both slots, replacing the 24px
+small-slot image that matched the reported quarter-area unpinned taskbar icon.
+One owned handle serves both slots and is released once after replacement.
+The tray keeps its own independent handle and size. A message-only HWND test
+queries all three WM_GETICON variants across 100%-400% scaling and repeated
+theme changes. Visible taskbar rendering still requires manual verification.
 The tray uses NIM_MODIFY and keeps its latest handle for Explorer restart recovery.
 The headless self-test decodes all sixty Windows icon frames without opening a
 window or tray icon. Browser checks cover matching colors and failure rollback.

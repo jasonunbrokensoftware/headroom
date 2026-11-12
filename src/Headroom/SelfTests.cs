@@ -83,6 +83,7 @@ internal static class SelfTests
         Check(iconHashes.Count == 6, "All six themed native icons are distinct");
         if (OperatingSystem.IsWindows())
         {
+            WindowIconTests.Run(Check, AppIcon.WindowIcon(folder, "ember"), AppIcon.WindowIcon(folder, "lagoon"));
             string pins = Path.Combine(folder, "isolated-pins");
             Directory.CreateDirectory(pins);
             int result = NativeDesktop.TestTaskbarIcons(pins, Environment.ProcessPath!,

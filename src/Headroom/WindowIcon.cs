@@ -9,7 +9,7 @@ namespace Headroom;
 [SupportedOSPlatform("windows")]
 internal sealed partial class WindowIcon(nint window) : IDisposable
 {
-    private nint small, large;
+    private nint icon;
     private static readonly string PinnedDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "Microsoft", "Internet Explorer", "Quick Launch", "User Pinned", "TaskBar");
     private static int UpdateTaskbar(nint handle, string icon) => NativeDesktop.SetTaskbarIcon(handle, Environment.ProcessPath!, icon,
@@ -24,17 +24,22 @@ internal sealed partial class WindowIcon(nint window) : IDisposable
     }
     public void Set(string path, bool requireTaskbarUpdate = true)
     {
-        uint dpi = GetDpiForWindow(window);
-        nint nextSmall = Load(path, GetSystemMetricsForDpi(49, dpi)); // SM_CXSMICON
-        nint nextLarge;
-        try { nextLarge = Load(path, GetSystemMetricsForDpi(11, dpi)); } // SM_CXICON
-        catch { Release(nextSmall); throw; }
-        SendMessageW(window, 0x80, 0, nextSmall); // WM_SETICON, ICON_SMALL
-        SendMessageW(window, 0x80, 1, nextLarge); // ICON_BIG (window / Alt+Tab; grouped taskbar uses the Shell)
-        Release(small); Release(large);
-        small = nextSmall; large = nextLarge;
+        SetWindowIcons(path, GetDpiForWindow(window));
         int result = UpdateTaskbar(window, path);
         if (requireTaskbarUpdate) Marshal.ThrowExceptionForHR(result);
+    }
+    internal void SetWindowIcons(string path, uint dpi)
+    {
+        // Shell consumers can select either window-icon slot. A caption-sized
+        // HICON (24px at 150%) can appear at one quarter the area of the 48px
+        // image. This window has a custom Vue title bar, so provide the full-size
+        // source for both slots; Windows scales it down where appropriate.
+        // https://learn.microsoft.com/windows/win32/winmsg/wm-seticon
+        nint next = Load(path, GetSystemMetricsForDpi(11, dpi)); // SM_CXICON
+        SendMessageW(window, 0x80, 1, next); // ICON_BIG: publish the full-size icon first.
+        SendMessageW(window, 0x80, 0, next); // ICON_SMALL / ICON_SMALL2 use the same full-size source.
+        Release(icon); // One owned handle, referenced by both slots.
+        icon = next;
     }
     internal static nint Load(string path, int size)
     {
@@ -42,7 +47,7 @@ internal sealed partial class WindowIcon(nint window) : IDisposable
         return icon != 0 ? icon : throw new Win32Exception(Marshal.GetLastPInvokeError(), "Could not load the themed icon.");
     }
     internal static void Release(nint icon) { if (icon != 0) DestroyIcon(icon); }
-    public void Dispose() { Release(small); Release(large); small = large = 0; }
+    public void Dispose() { Release(icon); icon = 0; }
     [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
     private static partial nint LoadImageW(nint instance, string path, uint type, int width, int height, uint flags);
     [LibraryImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static partial bool DestroyIcon(nint icon);
