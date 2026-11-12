@@ -1,4 +1,4 @@
-Photino.Native 4.0.22 Windows sources, pinned to upstream commit
+Photino.Native 4.0.22 Windows and Linux sources, pinned to upstream commit
 3ba4b937d6337b5c58344445db08a5a9a63f07c8 (tag v4.0.22):
 https://github.com/tryphotino/photino.Native
 
@@ -20,7 +20,17 @@ WebView2 and WIL headers are restored from pinned NuGet packages by Headroom.
 Native AOT DirectPInvoke links this library and WebView2LoaderStatic.lib into
 Headroom.exe. Neither native library is extracted or loaded as a sidecar DLL.
 The installed WebView2 Runtime and normal Windows system libraries remain OS
-dependencies. Linux retains its existing Photino package and GTK path.
+dependencies.
+
+Linux builds compile the pinned Photino.Linux.cpp and Photino.Linux.Dialog.cpp
+with Headroom.Linux.cpp into a static archive via tools/Build-Native-Linux.sh.
+Native AOT DirectPInvoke links the adapter into one ELF executable, with no
+Photino.Native.so sidecar. GTK 3, WebKitGTK 4.1, libnotify, and X11 remain normal
+system dependencies. AppIndicator support is discovered dynamically at runtime.
+Headroom's Linux changes use an ephemeral WebKit profile, set the application
+identity, and defer window visibility until Vue's initial view has painted.
+The adapter adds the GTK/AppIndicator tray, background activation, and optional
+test hooks exercised only on isolated Xvfb/Weston displays with a private D-Bus.
 
 Headroom.Taskbar.cpp keeps Windows shell COM calls inside the statically linked
 adapter. It synchronizes this EXE's existing taskbar pins and window relaunch

@@ -2,7 +2,7 @@
 
 Headroom is a portable desktop dashboard for monitoring usage, reset times, and earned resets across any number of ChatGPT/Codex accounts. It uses a Vue interface in a native desktop window, backed by C# and .NET Native AOT.
 
-Windows x64 is the current supported platform. The shared backend and Vue interface are designed for future Linux support; Linux builds and desktop behavior have not yet been validated.
+Windows x64 and Linux x64 builds share the same backend and Vue interface. The Linux port is validated on Fedora 45, with isolated X11 and Wayland desktop tests. Other Linux distributions have not yet been validated.
 
 ## Features
 
@@ -13,9 +13,9 @@ Windows x64 is the current supported platform. The shared backend and Vue interf
 - Estimated usage runway using recent consumption, scheduled refills, and existing resets. Early estimates are labeled, and learned history survives account resets and app restarts.
 - Six dark color themes, an integrated custom header, loading indicators, and responsive charts.
 - The interface icon follows the theme; the EXE, taskbar, and tray keep the neutral Graphite icon.
-- Windows tray monitoring and optional Start with Windows.
+- Tray monitoring and optional startup at login on Windows and Linux desktops with tray support.
 - About Headroom in the interface footer and tray menu, with version/build details, the MIT license, and GitHub source links.
-- A single Windows EXE with settings and account data stored beside it.
+- One native executable per platform, with settings and account data stored beside it.
 
 Headroom reads account status through the installed Codex CLI. It does not send model prompts or redeem resets. It is an independent project, not an official OpenAI application.
 
@@ -37,9 +37,21 @@ Closing the window hides Headroom in the tray and keeps monitoring active. Use *
 
 Normal launches reveal the window after the interface has painted. **Start with Windows** launches with `--background`: only the tray icon appears, with no window or taskbar button. Opening Headroom from the tray reveals the prepared interface. A background launch also leaves an already-running window alone.
 
+## Build and run on Linux
+
+Build on Linux x64 with the .NET 10 SDK, Clang, a C++ compiler, and the development packages for GTK 3, WebKitGTK 4.1, libnotify, X11, and zlib. See the [Linux guide](docs/linux.md) for dependencies and desktop tests.
+
+```sh
+dotnet publish src/Headroom/Headroom.csproj -c Release -r linux-x64 -o artifacts/linux-native
+```
+
+Copy `artifacts/linux-native/Headroom` to a writable folder, then run it. Only this executable is needed from the publish output. GTK 3, WebKitGTK 4.1, libnotify, X11 libraries, `xdg-open`, and the Codex CLI must be available on the machine. No separate .NET runtime or Photino sidecar is required.
+
+Run `./Headroom --install-desktop` from its permanent location to add **Headroom** to your application menu. The launcher directly executes the native binary. The tray menu offers **Start at login**, **About Headroom**, and **Quit Headroom**. Without a supported tray, the window stays accessible and closing it quits the app.
+
 ## Portable data and history
 
-`settings.json` and `data/` are created beside the EXE. Move them together with the executable to preserve accounts, settings, and history. **The data folder contains sign-in credentials and must remain private.** Runtime data and configuration are excluded from Git.
+`settings.json` and `data/` are created beside the executable. Move them together to preserve accounts, settings, and history. Windows portable accounts can be copied to Linux with the Linux executable; clear a Windows-specific `codexPath` to use Linux discovery. **The data folder contains sign-in credentials and must remain private.** Runtime data and configuration are excluded from Git. Copies keep independent monitoring histories; they do not synchronize Headroom's local files.
 
 Service-reported daily token history is downloaded when available. Allowance and reset histories are recorded while Headroom runs, using account-wide balances rather than activity from just this machine. Gaps remain unknown. Forecasts use allowance consumption, not a conversion from tokens to subscription capacity.
 

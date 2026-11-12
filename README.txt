@@ -2,7 +2,8 @@ HEADROOM — NATIVE .NET + VUE
 
 Currently supports Codex/ChatGPT accounts.
 
-Run app\Headroom.exe. It opens the Vue dashboard in its own desktop window.
+Run Headroom.exe on Windows or Headroom on Linux. It opens the Vue dashboard in
+its own desktop window.
 Click "Sign in to another account" to open sign-in directly. Add any number of
 accounts. Labels come automatically from your email and selected workspace;
 there are no custom names. For a different ChatGPT account, copy its sign-in
@@ -35,7 +36,7 @@ Copyright (c) 2026 Jason Carr, and the full MIT license (available offline).
 Source-code, license, and third-party notice links open in your default browser.
 Choosing About from the tray restores the window and opens the same dialog.
 
-The executable is compiled with .NET 10 Native AOT for Windows x64. It embeds
+The executable is compiled with .NET 10 Native AOT for Windows or Linux x64. It embeds
 the Vue production library and all UI assets. Photino.NET hosts the interface
 using WebView2 on Windows and WebKitGTK on Linux. Windows builds statically link
 Photino and the WebView2 loader: distribute Headroom.exe alone, with no DLLs
@@ -106,8 +107,9 @@ the window exits normally so the app cannot become inaccessible.
 Start with Windows is optional and initially off. Its preference is kept in
 settings.json beside the EXE; enabling it registers this EXE in Windows' per-user
 startup list with --background. Launch Headroom from its new location after
-moving it to update that registration. Linux keeps its existing desktop behavior;
-the Windows tray adapter does not introduce WinForms or WPF dependencies.
+moving it to update that registration. Linux offers Start at login through an
+XDG autostart entry and an optional AppIndicator tray; see docs/linux.md.
+Neither platform introduces WinForms or WPF dependencies.
 Running the EXE again brings the existing desktop window forward. Account
 sign-in deliberately opens in your usual browser; the dashboard stays in its
 own window. The Copy link option works with separate browser profiles.
@@ -128,19 +130,23 @@ build helper, not an app launcher. PDB and staticwebassets diagnostic files in
 publish output are not needed for distribution. Run node tests/single-exe.mjs
 to verify system-only native DLL imports and run the EXE alone in a clean folder.
 
-LINUX PATH
+LINUX
 
-The same Vue UI and backend source are designed for Linux. Publish on a Linux
-machine with the .NET 10 SDK and Native AOT prerequisites installed:
-  dotnet publish src/Headroom/Headroom.csproj -c Release -r linux-x64 -o artifacts/linux
+The same Vue UI and backend are validated on Fedora 45 x64, with isolated X11
+and Wayland desktop tests. Publish on Linux with the .NET 10 SDK, Native AOT
+prerequisites, and GTK/WebKit development packages installed:
+  dotnet publish src/Headroom/Headroom.csproj -c Release -r linux-x64 -o artifacts/linux-native
 
-The Linux executable uses GTK 3 and WebKitGTK 4.1 for its desktop window, plus
-xdg-open for account sign-in and the installed Codex CLI. On Ubuntu, install
-libgtk-3-0 and libwebkit2gtk-4.1-0 (package names may vary by distribution).
-Keep Photino.Native.so next to the executable. No desktop credential store is
-required for new portable profiles. Linux has not been built or tested in this
-Windows environment. Native AOT publishing must be performed on the target OS;
-the Windows EXE cannot itself run on Linux.
+Distribute the native Headroom executable alone; Photino is statically linked.
+GTK 3, WebKitGTK 4.1, libnotify, and X11 are system runtime dependencies, along
+with xdg-open for sign-in and the installed Codex CLI. No desktop credential
+store is required for portable profiles. Run Headroom --install-desktop from
+its permanent location to add an application-menu launcher and apply the saved
+startup preference. AppIndicator-capable desktops support the tray; without a
+tray, closing quits normally and a background launch opens a visible window.
+See docs/linux.md for build dependencies, portable Windows account transfer,
+and isolated native desktop tests. Other distributions and ARM64 are untested;
+Native AOT builds must target the OS and glibc version where they will run.
 
 DIAGNOSTICS
 
@@ -160,10 +166,10 @@ are ignored; email and workspace metadata populate on the next refresh.
 If a workspace name is not reported, personal plans show Personal; other
 accounts show their workspace ID when available or Workspace unavailable.
 
-Validation for the dark/custom-title-bar update used Native AOT publishing,
-Vue template compilation, and isolated backend tests. No desktop automation
-or screen capture was used. Native title-bar interactions and Linux remain
-for manual testing.
+Validation uses Windows and Linux Native AOT publishing, Vue template checks,
+isolated backend tests, and headless desktop checks. No desktop automation
+or screen capture is used. Compositor-specific title-bar gestures still benefit
+from manual testing on the target Linux desktop.
 
 The Codex CLI and Windows WebView2 runtime must still be available on the target
 machine. Codex is discovered beside Headroom.exe, in tools/codex.exe, on PATH,
