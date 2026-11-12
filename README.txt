@@ -1,6 +1,6 @@
 HEADROOM — NATIVE .NET + VUE
 
-All your AI usage. One place. Currently supports Codex/ChatGPT accounts.
+Currently supports Codex/ChatGPT accounts.
 
 Run app\Headroom.exe. It opens the Vue dashboard in its own desktop window.
 Click "Sign in to another account" to open sign-in directly. Add any number of

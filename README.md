@@ -1,7 +1,5 @@
 # Headroom
 
-**All your AI usage. One place.**
-
 Headroom is a portable desktop dashboard for monitoring usage, reset times, and earned resets across any number of ChatGPT/Codex accounts. It uses a Vue interface in a native desktop window, backed by C# and .NET Native AOT.
 
 Windows x64 is the current supported platform. The shared backend and Vue interface are designed for future Linux support; Linux builds and desktop behavior have not yet been validated.
