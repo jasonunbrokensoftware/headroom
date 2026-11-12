@@ -171,7 +171,10 @@ zero-use time, preventing account switching from inflating the pooled rate.
 Demand blocked by limits is unknowable and may make the estimate optimistic. After at least
 six monitored hours and measurable use, it uses that observed pace. Until then,
 the current weekly window's consumed fraction divided by elapsed window time is
-shown explicitly as an early estimate (requires a window at least six hours old).
+shown explicitly as an early estimate (requires a window at least 30 minutes old).
+The short settling period avoids dividing rounded percentages by just a few
+minutes. A new window shows its wait time; one recently reset account no longer
+withholds the pooled estimate for six hours. Early rates can be volatile.
 Token counts are never converted directly into subscription capacity. Exhausted
 periods can hide demand, so an early estimate can understate desired usage.
 

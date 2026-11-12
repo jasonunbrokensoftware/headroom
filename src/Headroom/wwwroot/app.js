@@ -17,6 +17,7 @@ createApp({
     forecastLoading() { return !this.historyLoaded || this.historyAccounts.some(isAccountLoading); },
     tokenHistoryLoading() { return this.historyAccounts.some(a => (a.busy || this.historyBusy) && !this.histories.find(h=>h.accountId===a.id)?.tokens?.updatedAt); },
     forecast() { return forecastUsage(this.historyAccounts, this.histories, this.now, Number(this.paceMultiplier), this.includeResets); },
+    forecastReady() { return ['covered','shortage'].includes(this.forecast.status); },
     tokenPlot() { return plotHistory(historySeries(this.historyAccounts,this.histories,this.historyAt,Number(this.historyDays),'tokens'),this.historyAt,Number(this.historyDays),'tokens'); },
     balancePlot() { return plotHistory(historySeries(this.historyAccounts,this.histories,this.historyAt,Number(this.historyDays),this.historyMetric),this.historyAt,Number(this.historyDays),this.historyMetric); },
     historyWarnings() { return [...new Set(this.histories.filter(h => this.historyAccounts.some(a => a.id === h.accountId)).map(h => h.error).filter(Boolean))]; },

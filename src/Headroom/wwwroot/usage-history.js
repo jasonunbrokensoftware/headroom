@@ -1,6 +1,6 @@
 import { capacityPolicy, uniqueAccounts, isFresh } from './usage-totals.js';
 
-const DAY = 86400, epsilon = 1e-8;
+const DAY = 86400, EARLY_WINDOW = 30 * 60, epsilon = 1e-8;
 const finite = n => typeof n === 'number' && Number.isFinite(n);
 const weight = plan => Object.hasOwn(capacityPolicy.weights, plan) ? capacityPolicy.weights[plan] / capacityPolicy.referenceWeight : null;
 const weekly = account => {
@@ -21,11 +21,14 @@ export function measurePace(account, history, now) {
   // A transparent fallback until local account-wide observations cover enough time.
   // This measures the current window's average, not raw-token conversion.
   const elapsed = finite(quota.resetsAt) ? now / 1000 - (quota.resetsAt - 7 * DAY) : null;
-  if (elapsed >= 6 * 3600 && elapsed <= 7 * DAY)
+  // A recent reset must not hide an otherwise useful pooled estimate for six hours.
+  // Keep a short settling period to avoid extrapolating rounded percentages over minutes.
+  if (elapsed != null && elapsed >= EARLY_WINDOW && elapsed <= 7 * DAY)
     return { rate: capacity * (1 - Math.max(0, Math.min(100, quota.remaining)) / 100) / elapsed * DAY,
       method: 'window', hours: seconds / 3600 };
   if (quota.remaining === 100) return { rate: 0, method: 'window', hours: seconds / 3600 };
-  return { rate: null, method: 'learning', hours: seconds / 3600 };
+  return { rate: null, method: 'learning', hours: seconds / 3600,
+    waitSeconds:elapsed != null && elapsed >= 0 && elapsed < EARLY_WINDOW ? EARLY_WINDOW-elapsed : null };
 }
 
 export function simulateRunway(input, dailyRate, horizon = 30, useResets = true) {
@@ -78,7 +81,10 @@ export function forecastUsage(accounts, histories, now, multiplier = 1, useReset
       return {...result,status:'unavailable',message:'A current, supported weekly balance is needed for every selected account.'};
     const history = histories.find(h=>h.accountId===account.id);
     const pace = measurePace(account,history,now);
-    if (!pace || pace.rate === null) return {...result,hours:pace?.hours||0};
+    if (!pace || pace.rate === null) return {...result,hours:pace?.hours||0,waitSeconds:pace?.waitSeconds,
+      message:pace?.waitSeconds != null
+        ? `The weekly window for ${account.email || account.name || 'one account'} just started. An early estimate needs 30 minutes of elapsed time.`
+        : `Waiting for enough measured usage or a valid weekly reset time for ${account.email || account.name || 'one account'}.`};
     paces.push(pace);
     const balance = Math.max(0, Math.min(100,quota.remaining)) / 100 * capacity;
     exhausted ||= balance === 0;

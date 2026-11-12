@@ -16,6 +16,24 @@ history.observedDays[0].date='2026-10-01';
 assert.equal(measurePace(a,history,now).method,'window');
 console.log('PASS learned allowance pace, dated history, and explicitly early current-window fallback');
 
+const recent=account('recent',72);
+recent.usage.quotas[0].resetsAt=now/1000+7*day-4*3600;
+close(measurePace(recent,null,now).rate,1.68);
+assert.equal(measurePace(recent,null,now).method,'window');
+assert.ok(forecastUsage([a,recent],[],now).days>0, 'A four-hour-old window no longer blocks the pooled forecast');
+recent.usage.quotas[0].resetsAt=now/1000+7*day-10*60;
+assert.equal(measurePace(recent,null,now).rate,null);
+const waiting=forecastUsage([a,recent],[],now);
+assert.equal(waiting.status,'learning'); assert.equal(waiting.waitSeconds,20*60);
+assert.ok(waiting.message.includes(recent.email));
+recent.usage.quotas[0].resetsAt=now/1000+7*day-30*60;
+assert.equal(forecastUsage([a,recent],[],now).early,true);
+assert.ok(forecastUsage([a,recent],[],now).rate>0);
+recent.usage.quotas[0].resetsAt=null;
+assert.equal(measurePace(recent,null,now).rate,null);
+assert.equal(forecastUsage([recent],[],now).waitSeconds,null);
+console.log('PASS early estimates after 30 minutes, pooled recent-reset accounts, and explicit settling waits');
+
 close(simulateRunway([model(.5,1)],.2).days,6);
 assert.equal(simulateRunway([model(.5,1)],.1).days,30);
 close(simulateRunway([model(.1,6,[1])],1).days,1.1);

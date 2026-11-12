@@ -16,7 +16,7 @@ const account = (id, plan, remaining, count = 0) => ({ id, email: `${id}@example
     ordinaryUsageAllowed:remaining > 0, resets:Array.from({length:count}, (_,i)=>({id:`${id}-${i}`, title:'Full reset', resetType:'codexRateLimits', expiresAt:future + i * 86400})) } });
 const fixture = [account('one','pro',0), account('two','prolite',47,1), account('three','prolite',6,2)];
 fixture[2].email = 'jasondavidcarr@unbrokensoftware.com'; // Width regression fixture only; no credentials are used.
-let state = {accounts:fixture,login:null}, hold = true, held = [];
+let state = {accounts:fixture,login:null}, hold = true, held = [], observed = true;
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml'};
 const server = createServer(async (req,res) => {
   if (req.url === '/api/accounts') {
@@ -30,7 +30,7 @@ const server = createServer(async (req,res) => {
     res.end(JSON.stringify({accounts:(state?.accounts||[]).map(a=>({accountId:a.id,identity:a.workspaceId,
       tokens:{days:[{date:'2026-11-09',tokens:120000000},{date:'2026-11-10',tokens:329300000}],updatedAt:new Date(now).toISOString()},
       points:[{at:now/1000-300,remaining:50,resets:2},{at:now/1000,remaining:47,resets:2}],
-      observedDays:[{date:'2026-11-11',plan:a.plan,consumedPercent:10,coveredSeconds:36000}],startedAt:now/1000-86400,error:null}))}));
+      observedDays:observed ? [{date:'2026-11-11',plan:a.plan,consumedPercent:10,coveredSeconds:36000}] : [],startedAt:now/1000-86400,error:null}))}));
     return;
   }
   const file = path.resolve(root, req.url === '/' ? 'index.html' : '.' + req.url);
@@ -91,11 +91,13 @@ try {
   for (const width of [2560,1200,680]) {
     await page.setViewportSize({width,height:1000});
     const layout = await page.evaluate(() => {
-      const rect = el => { const r=el.getBoundingClientRect(); return {x:r.x,y:r.y,right:r.right,width:r.width,height:r.height}; };
+      const rect = el => { const r=el.getBoundingClientRect(); return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}; };
       return {sections:['.toolbar','.overview','.accounts-section','.footnote'].map(s=>rect(document.querySelector(s))),
         cards:[...document.querySelectorAll('.card')].map(rect),
         resets:[...document.querySelectorAll('.card>.resets')].map(rect),
         footers:[...document.querySelectorAll('.cardfooter')].map(rect),
+        forecastStats:[...document.querySelectorAll('.forecast-stat')].map(rect),
+        forecastControls:rect(document.querySelector('.forecast-controls')),
         emails:[...document.querySelectorAll('.account-email')].map(e=>({scroll:e.scrollWidth,client:e.clientWidth,nowrap:getComputedStyle(e).whiteSpace})),
         overflow:document.querySelector('.content').scrollWidth > document.querySelector('.content').clientWidth};
     });
@@ -103,6 +105,9 @@ try {
     for (const section of layout.sections) { assert.ok(Math.abs(section.x-first.x)<1); assert.ok(Math.abs(section.right-first.right)<1); }
     assert.equal(layout.overflow,false,`No horizontal overflow at ${width}`);
     for (const email of layout.emails) { assert.equal(email.nowrap,'nowrap'); assert.ok(email.scroll<=email.client,`Email fits at ${width}: ${JSON.stringify(email)}`); }
+    assert.equal(layout.forecastStats.length,3);
+    assert.ok(layout.forecastControls.y >= Math.max(...layout.forecastStats.map(r=>r.bottom))+16, `Forecast controls clear metric row at ${width}`);
+    if(width>760) assert.ok(layout.forecastStats.every(r=>Math.abs(r.y-layout.forecastStats[0].y)<1), `Forecast metrics align at ${width}`);
     const charts = await page.locator('.chart-card').evaluateAll(cards => cards.map(card => {
       const svg = card.querySelector('svg'), bounds = svg.getBoundingClientRect(), note = card.querySelector('.chart-note').getBoundingClientRect();
       return {viewBox:svg.getAttribute('viewBox'), bottom:bounds.bottom, noteTop:note.top,
@@ -138,6 +143,27 @@ try {
   await page.locator('.forecast-controls input[type=checkbox]').uncheck();
   await page.locator('.forecast-controls input[type=checkbox]').check();
   console.log('PASS account-wide history graphs, account filtering, reset history, and runway controls');
+  observed = false;
+  const justReset = account('new-window','prolite',98);
+  justReset.usage.quotas[0].resetsAt = now/1000 + 7*86400 - 10*60;
+  await publish([justReset]);
+  await page.locator('.forecast-waiting').waitFor();
+  assert.match(await page.locator('.forecast-next').innerText(), /20 minutes/);
+  assert.equal(await page.locator('.forecast-controls,.forecast-value,.forecast-method').count(),0);
+  assert.ok((await page.locator('.forecast-panel').boundingBox()).height < 250, 'Waiting panel stays compact without empty columns');
+  const recentlyReset = {...justReset,id:'four-hour-window',workspaceId:'four-hour-window',
+    usage:{...justReset.usage,quotas:[{...justReset.usage.quotas[0],remaining:72,resetsAt:now/1000+7*86400-4*3600}]}};
+  await publish([fixture[0],fixture[1],recentlyReset]);
+  await page.locator('.forecast-value').waitFor();
+  assert.equal(await page.locator('.forecast-status').innerText(),'Early estimate');
+  assert.equal(await page.locator('.forecast-waiting').count(),0);
+  assert.equal(await page.locator('.forecast-method').getAttribute('open'),null);
+  await page.locator('.forecast-method summary').click();
+  assert.ok(await page.locator('.projection svg').isVisible());
+  assert.ok((await page.locator('.projection svg').getAttribute('viewBox')).includes('900 116'));
+  observed = true;
+  await publish(fixture);
+  console.log('PASS compact settling state, useful pooled early estimate, and expandable forecast explanation');
   await page.getByRole('button',{name:'History & forecast',exact:true}).click();
   assert.ok(await page.locator('.content').evaluate(el=>el.scrollTop)>0);
   await page.getByRole('button',{name:'Hide to tray',exact:true}).click();
