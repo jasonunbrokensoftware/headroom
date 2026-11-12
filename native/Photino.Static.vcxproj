@@ -20,6 +20,7 @@
     <ClCompile Include="photino\Exports.cpp" /><ClCompile Include="photino\Photino.Windows.cpp" />
     <ClCompile Include="photino\Photino.Windows.DarkMode.cpp" /><ClCompile Include="photino\Photino.Windows.Dialog.cpp" />
     <ClCompile Include="photino\Dependencies\wintoastlib.cpp" /><ClCompile Include="Headroom.Probe.cpp" />
+    <ClCompile Include="Headroom.Taskbar.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

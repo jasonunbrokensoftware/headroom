@@ -23,6 +23,7 @@ internal sealed class DesktopWindow
         hideOnReady = start.Background;
         dataDirectory = start.DataDirectory;
         string iconFile = AppIcon.WindowIcon(dataDirectory, PortableStorage.Settings().Theme);
+        if (OperatingSystem.IsWindows()) WindowIcon.PrepareTaskbar(iconFile);
         // WebView2's environment override takes precedence over its API parameter.
         // Keep the profile in the portable folder even if the parent process sets it.
         if (OperatingSystem.IsWindows())
@@ -55,7 +56,7 @@ internal sealed class DesktopWindow
                 if (OperatingSystem.IsWindows())
                 {
                     windowIcon = new(window!.WindowHandle);
-                    windowIcon.Set(iconFile);
+                    windowIcon.Set(iconFile, requireTaskbarUpdate: false);
                     tray = new(window!.WindowHandle, iconFile,
                         () => _ = Task.Run(async () => { try { await start.Refresh(); } catch { } }), RequestClose);
                 }

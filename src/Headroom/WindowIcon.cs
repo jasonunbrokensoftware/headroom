@@ -10,7 +10,16 @@ namespace Headroom;
 internal sealed partial class WindowIcon(nint window) : IDisposable
 {
     private nint small, large;
-    public void Set(string path)
+    private static readonly string PinnedDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "Microsoft", "Internet Explorer", "Quick Launch", "User Pinned", "TaskBar");
+    internal static void PrepareTaskbar(string icon)
+    {
+        // Migrate this EXE's existing pin before its first window is shown.
+        // A locked/read-only pin must not prevent the app from opening. A theme
+        // change reports synchronization failures through the appearance API.
+        _ = NativeDesktop.SetTaskbarIcon(0, Environment.ProcessPath!, icon, PinnedDirectory);
+    }
+    public void Set(string path, bool requireTaskbarUpdate = true)
     {
         uint dpi = GetDpiForWindow(window);
         nint nextSmall = Load(path, GetSystemMetricsForDpi(49, dpi)); // SM_CXSMICON
@@ -21,6 +30,8 @@ internal sealed partial class WindowIcon(nint window) : IDisposable
         SendMessageW(window, 0x80, 1, nextLarge); // ICON_BIG (taskbar / Alt+Tab)
         Release(small); Release(large);
         small = nextSmall; large = nextLarge;
+        int result = NativeDesktop.SetTaskbarIcon(window, Environment.ProcessPath!, path, PinnedDirectory);
+        if (requireTaskbarUpdate) Marshal.ThrowExceptionForHR(result);
     }
     internal static nint Load(string path, int size)
     {

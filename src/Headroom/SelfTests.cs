@@ -81,6 +81,14 @@ internal static class SelfTests
             Check(png is not null && png.ReadByte() == 137 && png.ReadByte() == 80, theme + " includes its Linux icon");
         }
         Check(iconHashes.Count == 6, "All six themed native icons are distinct");
+        if (OperatingSystem.IsWindows())
+        {
+            string pins = Path.Combine(folder, "isolated-pins");
+            Directory.CreateDirectory(pins);
+            int result = NativeDesktop.TestTaskbarIcons(pins, Environment.ProcessPath!,
+                AppIcon.WindowIcon(folder, "classic"), AppIcon.WindowIcon(folder, "ember"));
+            Check(result == 0, "Pinned shortcut and taskbar-group icon follow repeated theme changes; other targets and launch details stay intact (stage " + result + ")");
+        }
         await using (var manager = new AccountManager(folder))
         {
             for (int i = 0; i < 7; i++) manager.Add();

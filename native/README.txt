@@ -12,3 +12,8 @@ Native AOT DirectPInvoke links this library and WebView2LoaderStatic.lib into
 Headroom.exe. Neither native library is extracted or loaded as a sidecar DLL.
 The installed WebView2 Runtime and normal Windows system libraries remain OS
 dependencies. Linux retains its existing Photino package and GTK path.
+
+Headroom.Taskbar.cpp keeps Windows shell COM calls inside the statically linked
+adapter. It synchronizes this EXE's existing taskbar pins and window relaunch
+metadata with the selected icon. Its regression probe uses only scratch links
+and a message-only window. No visible UI, re-pinning, or Explorer restart.

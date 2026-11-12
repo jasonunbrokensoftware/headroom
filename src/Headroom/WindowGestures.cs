@@ -32,6 +32,7 @@ internal static partial class WindowGestures
     private static unsafe nint FrameProcedure(nint hwnd, uint message, nuint wParam, nint lParam, nuint id, nuint data)
     {
         if (message == 0x0083 && wParam != 0) return 0; // WM_NCCALCSIZE: no OS title bar or frame.
+        if (message == 0x0002) NativeDesktop.ClearTaskbarIcon(hwnd); // WM_DESTROY: release shell property resources.
         nint result = DefSubclassProc(hwnd, message, wParam, lParam);
         if (message == 0x0024 && lParam != 0) // WM_GETMINMAXINFO: respect the taskbar on every monitor.
         {

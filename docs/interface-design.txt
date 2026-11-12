@@ -80,6 +80,24 @@ https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-seticon
 https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-loadimagew
 https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shell_notifyiconw
 
+Pinned-taskbar correction: WM_SETICON controls the window icon, but an existing
+pin can still reference Headroom.exe's original icon. The Windows adapter now
+updates the icon and stable Headroom.Desktop identity of existing .lnk pins whose
+resolved target matches this executable. It preserves launch arguments and other
+link details, leaves unrelated targets alone, and sends a targeted shell change
+notification. The window publishes its themed relaunch icon and sets its stable
+AppUserModelID last to request a taskbar refresh. Existing pins are synchronized
+before showing the first window; new pins receive the same themed metadata.
+Window properties are cleared during destruction. No re-pinning, Explorer restart,
+global icon-cache reset, or theme-specific change of application identity is used.
+An isolated native regression cycles themes using scratch .lnk files and a
+message-only HWND. It reads back the actual shell properties, verifies preserved
+launch details, and confirms a same-named shortcut to another EXE is untouched.
+It creates no visible window and does not modify real taskbar pins.
+https://learn.microsoft.com/en-us/windows/win32/properties/props-system-appusermodel-relaunchiconresource
+https://learn.microsoft.com/en-us/windows/win32/properties/props-system-appusermodel-id
+https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shgetpropertystoreforwindow
+
 Frame implementation references:
 https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute
 https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmncrenderingpolicy

@@ -35,7 +35,7 @@
     <DirectPInvokeList Include="$(MSBuildProjectDirectory)/../../native/Photino.Windows.pinvoke.txt" />
     <NativeLibrary Include="$(MSBuildProjectDirectory)/../../native/bin/x64/Release/Photino.Static.lib" />
     <NativeLibrary Include="$(PkgMicrosoft_Web_WebView2)/build/native/x64/WebView2LoaderStatic.lib" />
-    <NativeLibrary Include="user32.lib;shell32.lib;gdi32.lib;comdlg32.lib;shlwapi.lib;shcore.lib;urlmon.lib;ole32.lib;oleaut32.lib;uuid.lib;version.lib;windowsapp.lib" />
+    <NativeLibrary Include="user32.lib;shell32.lib;gdi32.lib;comdlg32.lib;shlwapi.lib;shcore.lib;urlmon.lib;ole32.lib;oleaut32.lib;uuid.lib;version.lib;windowsapp.lib;propsys.lib" />
   </ItemGroup>
   <Target Name="BuildStaticPhotino" BeforeTargets="IlcCompile" Condition="'$(RuntimeIdentifier)' == 'win-x64'">
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/../../tools/Build-Native.ps1&quot; -WebView2Root &quot;$(PkgMicrosoft_Web_WebView2)&quot; -WilRoot &quot;$(PkgMicrosoft_Windows_ImplementationLibrary)&quot;" />

@@ -57,3 +57,6 @@ Photino.Native!Photino_ShowOpenFolder
 Photino.Native!Photino_ShowSaveFile
 Photino.Native!Photino_WaitForExit
 Photino.Native!Headroom_WebViewRuntimeAvailable
+Photino.Native!Headroom_SetTaskbarIcon
+Photino.Native!Headroom_ClearTaskbarIcon
+Photino.Native!Headroom_TestTaskbarIcons
