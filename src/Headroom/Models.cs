@@ -23,6 +23,7 @@ public record DashboardView(List<AccountView> Accounts, LoginInfo? Login);
 [JsonSerializable(typeof(Message))]
 [JsonSerializable(typeof(InstanceInfo))]
 [JsonSerializable(typeof(LocalSettings))]
+[JsonSerializable(typeof(AppearancePreferences))]
 [JsonSerializable(typeof(DashboardView))]
 [JsonSerializable(typeof(AccountView))]
 [JsonSerializable(typeof(LoginInfo))]

@@ -11,7 +11,7 @@ Windows x64 is the current supported platform. The shared backend and Vue interf
 - Plan-weighted capacity totals, including verified banked resets, with an account-by-account explanation.
 - Service-reported daily token activity and locally recorded account-wide allowance history, including usage from other machines.
 - Estimated usage runway using recent consumption, scheduled refills, and existing resets. Early estimates are labeled, and learned history survives account resets and app restarts.
-- Dark theme, custom title bar, loading indicators, and responsive charts.
+- Four dark color themes, an integrated custom header, loading indicators, and responsive charts.
 - Windows tray monitoring and optional Start with Windows.
 - A single Windows EXE with settings and account data stored beside it.
 

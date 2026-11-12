@@ -9,9 +9,17 @@ there are no custom names. For a different ChatGPT account, copy its sign-in
 link into the appropriate browser profile or private window. Cancelled new
 sign-ins remove their empty cards. Remove is available on each account card.
 
-The UI has a dark theme and a single custom title bar. Drag the title bar to
-move the window; use its minimize, maximize/restore, and close buttons. Drag
-an edge or corner to resize. The Windows native title bar is hidden.
+The header combines the app name, navigation, actions, and window controls on
+one surface. Drag its blank areas to move the window; use its minimize,
+maximize/restore, and close buttons. Drag an edge or corner to resize. The
+Windows native title bar and border are hidden. Windows 11 handles outer corner
+clipping; maximized and snapped windows follow the system's square corners.
+
+The color-theme button offers Ember (copper and sand), Orchard (olive and citrus),
+Lagoon (sea glass and coral), and Rosewood (rose and brass). All four are dark
+themes with coordinated surfaces, controls, and chart colors. Your selection is
+saved automatically in settings.json beside the EXE and applied before the first
+page paint on the next launch. Ember is the default.
 
 The executable is compiled with .NET 10 Native AOT for Windows x64. It embeds
 the Vue production library and all UI assets. Photino.NET hosts the interface
@@ -217,6 +225,7 @@ After publishing, run from the repository root:
   node tests/history.mjs
   node tests/backend.mjs
   node tests/single-exe.mjs
+  node tests/appearance.mjs
 
 Optional headless layout/loading checks (requires Playwright for development):
   node tests/layout.mjs

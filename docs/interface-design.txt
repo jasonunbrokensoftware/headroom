@@ -24,16 +24,19 @@ columns, and move destructive actions into account menus. Keep information
 about calculations available in disclosures. Activity gets dedicated space
 for scenario controls and graphs without crowding everyday monitoring.
 
-Visual direction: charcoal surfaces, restrained periwinkle for emphasis,
-mint for banked capacity, amber for limits and stale data. Tabular numbers,
-one spacing scale, visible keyboard focus, reduced-motion support, and compact
-loading/empty/error states. Account colors stay consistent across filtering.
+Visual direction: four complete dark palettes, with Ember as the default.
+Ember uses warm charcoal, copper, and sand; Orchard uses olive and citrus;
+Lagoon pairs deep teal and sea glass with coral; Rosewood pairs wine and rose
+with brass. Semantic color roles cover surfaces, text, controls, charts, and
+loading states. Tabular numbers, one spacing scale, visible keyboard focus,
+reduced-motion support, and compact loading/empty/error states are shared.
+Account colors stay consistent across filtering within each theme.
 
 The custom title bar, controls, and frame are drawn by the app. Windows keeps
 native move/resize/snap behavior, but must not draw its title bar or border.
 No additional frontend dependencies or network fonts are introduced.
 
-Implemented layout: at 1200 x 780, the third account ends at 721 px. Both
+Implemented layout: at 1200 x 780, the third account ends at 681 px. Both
 capacity and runway summaries and all three account rows fit without scrolling.
 Validated at 520, 680, 800, 1024, 1200, 1440, and 2560 px: consistent section edges,
 long emails on one line, no horizontal overflow, SVG labels inside their plots,
@@ -47,10 +50,29 @@ Account menus support Escape and restore focus; refresh remains named for screen
 readers when its text is hidden in small windows. History failure has an explicit
 retry state instead of an endless loading animation.
 
+The app name, navigation, actions, and window controls now share one seamless
+header surface. Narrow windows use two rows on that same surface. The header
+never scrolls; the main content owns page scrolling. The theme chooser fits
+inside short windows and returns keyboard focus on Escape. Preferences use
+the portable settings file, not browser storage tied to a random loopback port.
+Initial HTML includes the selected palette to avoid a flash of the wrong theme.
+Theme and startup preference updates preserve each other under a shared lock.
+
+The headless audit covers all seven widths, all four themes, 4.5:1 normal-text
+contrast, 3:1 chart contrast, bounded menus, overlapping controls, unwanted
+header scrollbars, save-failure recovery, and a reload in the selected theme.
+An isolated EXE test covers API validation/authentication, persistence across
+restart, initial HTML, and preservation of Codex/startup preferences.
+
 Frame implementation references:
 https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute
 https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmncrenderingpolicy
-WM_NCCALCSIZE continues to provide the full client area. DWM non-client rendering
-is disabled, and Windows 11's separate border color is set to DWMWA_COLOR_NONE.
+https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/ui/apply-rounded-corners
+WM_NCCALCSIZE continues to provide the full client area. On Windows 11, DWM
+non-client rendering is enabled for real outer-window clipping and shadow;
+DWMWCP_ROUND requests rounded corners and DWMWA_COLOR_NONE hides its border.
+No competing CSS outline or corner is drawn. Older Windows falls back to a
+square custom frame with non-client rendering disabled. Maximized and snapped
+windows follow the system's square corners. The native move/resize logic stays.
 Native interactions still require manual verification; no desktop control or
 screen capture was used during this redesign.

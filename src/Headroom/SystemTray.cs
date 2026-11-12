@@ -79,10 +79,10 @@ internal sealed unsafe partial class SystemTray : IDisposable
             case 3:
                 var settings = PortableStorage.Settings();
                 bool enabled = !settings.StartWithWindows;
-                try { ApplyStartup(enabled); PortableStorage.SaveSettings(settings with { StartWithWindows = enabled }); }
+                try { ApplyStartup(enabled); PortableStorage.UpdateSettings(current => current with { StartWithWindows = enabled }); }
                 catch (Exception ex)
                 {
-                    try { PortableStorage.SaveSettings(settings); ApplyStartup(settings.StartWithWindows); } catch { }
+                    try { PortableStorage.UpdateSettings(current => current with { StartWithWindows = settings.StartWithWindows }); ApplyStartup(settings.StartWithWindows); } catch { }
                     MessageBoxW(window, "Could not change startup: " + ex.Message, "Headroom", 0x10);
                 }
                 break;

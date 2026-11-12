@@ -2,11 +2,13 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import { isAccountLoading } from '../src/Headroom/wwwroot/usage-totals.js';
+import { themes, resolveTheme } from '../src/Headroom/wwwroot/appearance.js';
 const root = 'src/Headroom/wwwroot/';
 let options, messages = [], calls = [];
 const context = vm.createContext({
   createApp: value => { options = value; return { mount() {} }; },
   location:{hash:''}, sessionStorage:{getItem:()=>''}, Date, JSON, Math, isAccountLoading,
+  themes, resolveTheme, document:{documentElement:{dataset:{theme:'ember'}}},
   window:{external:{sendMessage:message=>messages.push(JSON.parse(message))}}
 });
 vm.runInContext((await readFile(root+'app.js','utf8')).replace(/^import .*;$/gm,''), context);

@@ -97,6 +97,7 @@ foreach (var (route, resource, type) in new[] {
     ("/", "index.html", "text/html; charset=utf-8"), ("/app.js", "app.js", "text/javascript; charset=utf-8"),
     ("/style.css", "style.css", "text/css; charset=utf-8"), ("/vue.js", "vue.js", "text/javascript; charset=utf-8"),
     ("/headroom.svg", "headroom.svg", "image/svg+xml"),
+    ("/appearance.js", "appearance.js", "text/javascript; charset=utf-8"),
     ("/usage-totals.js", "usage-totals.js", "text/javascript; charset=utf-8"),
     ("/usage-history.js", "usage-history.js", "text/javascript; charset=utf-8") })
 {
@@ -104,8 +105,23 @@ foreach (var (route, resource, type) in new[] {
         ?? throw new InvalidOperationException("Missing embedded UI: " + resource);
     using var buffer = new MemoryStream(); stream.CopyTo(buffer);
     byte[] bytes = buffer.ToArray();
-    app.MapGet(route, () => Results.Bytes(bytes, type));
+    if (route == "/")
+    {
+        string html = System.Text.Encoding.UTF8.GetString(bytes);
+        // Render the portable preference before the first paint; loopback ports
+        // change between launches, so browser-local storage is not authoritative.
+        app.MapGet(route, () => Results.Content(html.Replace("<html lang=\"en\">",
+            "<html lang=\"en\" data-theme=\"" + Appearance.Normalize(PortableStorage.Settings().Theme) + "\">"), type));
+    }
+    else app.MapGet(route, () => Results.Bytes(bytes, type));
 }
+app.MapGet("/api/appearance", () => Results.Json(new AppearancePreferences(Appearance.Normalize(PortableStorage.Settings().Theme)), AppJson.Default.AppearancePreferences));
+app.MapPost("/api/appearance", (AppearancePreferences input) =>
+{
+    if (!Appearance.IsTheme(input.Theme)) throw new ArgumentException("Choose a supported color theme.");
+    var settings = PortableStorage.UpdateSettings(current => current with { Theme = input.Theme });
+    return Results.Json(new AppearancePreferences(settings.Theme), AppJson.Default.AppearancePreferences);
+});
 app.MapGet("/api/accounts", () =>
 {
     return Results.Json(accounts.Snapshot(), AppJson.Default.DashboardView);

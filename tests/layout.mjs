@@ -17,6 +17,7 @@ const account = (id, plan, remaining, count = 0) => ({ id, email: `${id}@example
 const fixture = [account('one','pro',0), account('two','prolite',47,1), account('three','prolite',6,2)];
 fixture[2].email = 'jasondavidcarr@unbrokensoftware.com'; // Width regression fixture only; no credentials are used.
 let state = {accounts:fixture,login:null}, hold = true, held = [], observed = true, historyFailure = false;
+let savedTheme='ember', themeFailure=false;
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml'};
 const server = createServer(async (req,res) => {
   if (req.url === '/api/accounts') {
@@ -25,6 +26,14 @@ const server = createServer(async (req,res) => {
     return;
   }
   if (req.url === '/api/refresh') { res.writeHead(204); res.end(); return; }
+  if(req.url === '/api/appearance') {
+    if(req.method==='POST') {
+      const parts=[];for await(const part of req)parts.push(part);
+      if(themeFailure){res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({text:'Test save failure'}));return;}
+      savedTheme=JSON.parse(Buffer.concat(parts)).theme;
+    }
+    res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({theme:savedTheme}));return;
+  }
   if (req.url === '/api/history') {
     if(historyFailure){res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({text:'Test history offline'}));return;}
     res.writeHead(200, {'Content-Type':'application/json'});
@@ -36,7 +45,7 @@ const server = createServer(async (req,res) => {
   }
   const file = path.resolve(root, req.url === '/' ? 'index.html' : '.' + req.url);
   if (!file.startsWith(root + path.sep)) { res.writeHead(404); res.end(); return; }
-  try { const data = await readFile(file); res.writeHead(200, {'Content-Type':mime[path.extname(file)] || 'application/octet-stream'}); res.end(data); }
+  try { let data = await readFile(file); if(req.url==='/')data=data.toString().replace('<html lang="en">',`<html lang="en" data-theme="${savedTheme}">`);res.writeHead(200, {'Content-Type':mime[path.extname(file)] || 'application/octet-stream'}); res.end(data); }
   catch { res.writeHead(404); res.end(); }
 });
 await new Promise(resolve => server.listen(0,'127.0.0.1',resolve));
@@ -52,6 +61,7 @@ try {
     const started=performance.now();
     Date.now=()=>value+Math.floor(performance.now()-started);
     let listener;
+    window.deliverNative=message=>listener(message);
     window.bridgeMessages=[];
     Object.defineProperty(window,'external',{value:{receiveMessage:fn=>listener=fn,sendMessage:message=>{
       window.bridgeMessages.push(JSON.parse(message));
@@ -96,7 +106,13 @@ try {
     await page.setViewportSize({width,height:780});
     const geometry=await page.evaluate(()=>{
       const rect=el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
-      return {toolbar:rect(document.querySelector('.toolbar')),dashboard:rect(document.querySelector('.dashboard')),
+      return {dashboard:rect(document.querySelector('.dashboard')),
+        header:rect(document.querySelector('.app-header')),
+        headerBackground:getComputedStyle(document.querySelector('.app-header')).backgroundColor,
+        appBackground:getComputedStyle(document.querySelector('#app')).backgroundColor,
+        frameBorder:getComputedStyle(document.querySelector('#app')).borderTopWidth,
+        headerScroll:[...document.querySelectorAll('.app-header,.header-tools,.view-nav')].map(e=>({name:e.className,overflow:getComputedStyle(e).overflowY,scroll:e.scrollHeight,client:e.clientHeight})),
+        headerButtons:[...document.querySelectorAll('.app-header button')].map(rect),
         cards:[...document.querySelectorAll('.card')].map(rect),
         emails:[...document.querySelectorAll('.account-email')].map(e=>({scroll:e.scrollWidth,client:e.clientWidth,nowrap:getComputedStyle(e).whiteSpace})),
         columns:[...document.querySelectorAll('.card')].map(e=>({usage:rect(e.querySelector('.usage-body')).x,resets:rect(e.querySelector('.resets')).x})),
@@ -105,15 +121,20 @@ try {
         headingCount:document.querySelectorAll('h1').length};
     });
     assert.equal(geometry.overflow,false,`No horizontal overflow at ${width}`);
-    assert.ok(Math.abs(geometry.toolbar.x-geometry.dashboard.x)<1,`Toolbar left edge aligns at ${width}`);
-    assert.ok(Math.abs(geometry.toolbar.right-geometry.dashboard.right)<1,`Toolbar right edge aligns at ${width}: ${JSON.stringify(geometry)}`);
+    assert.equal(geometry.headerBackground,geometry.appBackground,'Header blends into the app background');
+    assert.equal(geometry.frameBorder,'0px','No competing CSS outline at native rounded corners');
+    for(const item of geometry.headerScroll){assert.ok(!['scroll','auto'].includes(item.overflow),`No header scroll container at ${width}: ${item.name}`);assert.ok(item.scroll<=item.client,`No header vertical overflow at ${width}: ${JSON.stringify(item)}`);}
+    for(const [i,a] of geometry.headerButtons.entries()) {
+      assert.ok(a.x>=0 && a.right<=width && a.bottom<=geometry.header.bottom+1,`Header control stays inside its surface at ${width}`);
+      for(const b of geometry.headerButtons.slice(i+1))assert.ok(Math.min(a.right,b.right)-Math.max(a.x,b.x)<=1 || Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y)<=1,`Header controls do not overlap at ${width}`);
+    }
     assert.equal(geometry.headingCount,1);
     for(const email of geometry.emails){assert.equal(email.nowrap,'nowrap');assert.ok(email.scroll<=email.client,`Long email fits at ${width}: ${JSON.stringify(email)}`);}
     for(const text of geometry.mainText)assert.ok(text.scroll<=text.client+1,`Hero content fits at ${width}: ${JSON.stringify(text)}`);
     for(const columns of geometry.columns){assert.equal(columns.usage,geometry.columns[0].usage);assert.equal(columns.resets,geometry.columns[0].resets);}
     assert.ok(geometry.cards.every(r=>Math.abs(r.x-geometry.cards[0].x)<1 && Math.abs(r.width-geometry.cards[0].width)<1));
     if(width===1200)console.log(`INFO 1200x780: last account bottom ${Math.round(geometry.cards.at(-1).bottom)}px`);
-    console.log(`PASS ${width}px overview: aligned rows, single-line emails, shared edges, unclipped summary`);
+    console.log(`PASS ${width}px: unified header without scrollbars or overlap, aligned rows, and unclipped summary`);
     await activity();
     const charts=await page.locator('.chart-card').evaluateAll(cards=>cards.map(card=>{
       const svg=card.querySelector('svg'), bounds=svg.getBoundingClientRect(), note=card.querySelector('.chart-note').getBoundingClientRect();
@@ -127,6 +148,57 @@ try {
     await overview();
   }
   await page.setViewportSize({width:1200,height:780});
+  const themeNames=['Ember','Orchard','Lagoon','Rosewood'];
+  const themeBackgrounds=new Set();
+  for(const name of themeNames){
+    const before=await page.evaluate(()=>window.bridgeMessages.length);
+    await page.getByRole('button',{name:'Color theme',exact:true}).click();
+    assert.equal(await page.evaluate(()=>window.bridgeMessages.length),before,'Theme control does not initiate a window drag');
+    await page.locator('.theme-option').filter({hasText:name}).click();
+    await page.locator('.theme-save').filter({hasText:'Your choice is saved automatically.'}).waitFor();
+    assert.equal(await page.locator('html').getAttribute('data-theme'),name.toLowerCase());
+    const colors=await page.evaluate(()=>{
+      const probe=document.createElement('span');document.body.append(probe);
+      const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d');
+      const value=token=>{probe.style.color=`var(--${token})`;return getComputedStyle(probe).color;};
+      const lum=color=>{ctx.clearRect(0,0,1,1);ctx.fillStyle=color;ctx.fillRect(0,0,1,1);const rgb=[...ctx.getImageData(0,0,1,1).data].slice(0,3).map(c=>c/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4);return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;};
+      const contrast=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+      const pairs=[['text','bg'],['muted','panel'],['muted','raised'],['muted','selected-bg'],['accent','panel'],['accent-ink','accent'],['green','risk-start'],['amber','panel']];
+      const checks=pairs.map(([a,b])=>({pair:a+'/'+b,ratio:contrast(value(a),value(b))}));
+      const chart=[...document.querySelectorAll('.history-line')].map(e=>contrast(e.getAttribute('stroke'),value('panel')));
+      const background=value('bg');probe.remove();return {checks,chart,background};
+    });
+    themeBackgrounds.add(colors.background);
+    for(const check of colors.checks)assert.ok(check.ratio>=4.5,`${name} readable text ${check.pair}: ${check.ratio}`);
+    assert.ok(colors.chart.every(ratio=>ratio>=3),`${name} graph colors contrast with their surface`);
+    for(const width of [1200,680,520]){
+      await page.setViewportSize({width,height:480});
+      const box=await page.locator('.theme-menu').boundingBox();
+      assert.ok(box.x>=11 && box.x+box.width<=width-11 && box.y>=0 && box.y+box.height<=469,`${name} chooser fits ${width}x480`);
+      assert.equal(await page.locator('.content').evaluate(e=>e.scrollWidth>e.clientWidth),false);
+    }
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('.theme-menu').count(),0);
+    assert.ok(await page.getByRole('button',{name:'Color theme',exact:true}).evaluate(e=>e===document.activeElement));
+    await page.setViewportSize({width:1200,height:780});
+  }
+  assert.equal(themeBackgrounds.size,4,'Themes change the full surface palette, not just the accent');
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.locator('.runway-value').waitFor();
+  assert.equal(await page.locator('html').getAttribute('data-theme'),'rosewood','Saved theme is present on initial HTML after reload');
+  themeFailure=true;
+  await page.getByRole('button',{name:'Color theme',exact:true}).click();
+  await page.locator('.theme-option').filter({hasText:'Ember'}).click();
+  await page.locator('.theme-save.failed').waitFor();
+  assert.equal(await page.locator('html').getAttribute('data-theme'),'rosewood','Failed save restores previous theme');
+  themeFailure=false;await page.keyboard.press('Escape');
+  await page.locator('.brand').dispatchEvent('mousedown',{button:0,detail:1,screenX:120,screenY:30});
+  assert.equal(await page.evaluate(()=>window.bridgeMessages.at(-1).action),'drag');
+  await page.evaluate(()=>window.deliverNative('window:maximized'));
+  assert.equal(await page.locator('.resize-edge').count(),0);
+  await page.evaluate(()=>window.deliverNative('window:restored'));
+  assert.equal(await page.locator('.resize-edge').count(),8);
+  console.log('PASS four full palettes, text/chart contrast, portable-theme reload, save failure, bounded chooser, and window gestures');
   await page.locator('.reset-details summary').last().click();
   assert.equal(await page.locator('.reset-details[open] .reset').count(),2);
   await page.locator('.reset-details summary').last().click();
