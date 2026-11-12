@@ -60,3 +60,5 @@ Photino.Native!Headroom_WebViewRuntimeAvailable
 Photino.Native!Headroom_SetTaskbarIcon
 Photino.Native!Headroom_ClearTaskbarIcon
 Photino.Native!Headroom_TestTaskbarIcons
+Photino.Native!Headroom_CompleteWindowStartup
+Photino.Native!Headroom_TestStartupRendering

@@ -8,6 +8,9 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 
 internal static class Program
 {
+    internal static bool ShouldActivateExisting(string[] args) => !args.Contains("--background") &&
+        !args.Contains("--headless") && !args.Contains("--no-browser");
+
     [STAThread]
     public static int Main(string[] args)
     {
@@ -49,7 +52,7 @@ FileStream instanceLock;
 try { instanceLock = new(Path.Combine(data, "instance.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
 catch (IOException)
 {
-    if (!args.Contains("--headless") && !args.Contains("--no-browser"))
+    if (ShouldActivateExisting(args))
     {
         try
         {
@@ -98,6 +101,7 @@ foreach (var (route, resource, type) in new[] {
     ("/style.css", "style.css", "text/css; charset=utf-8"), ("/vue.js", "vue.js", "text/javascript; charset=utf-8"),
     ("/headroom.svg", "headroom.svg", "image/svg+xml"),
     ("/appearance.js", "appearance.js", "text/javascript; charset=utf-8"),
+    ("/startup.js", "startup.js", "text/javascript; charset=utf-8"),
     ("/usage-totals.js", "usage-totals.js", "text/javascript; charset=utf-8"),
     ("/usage-history.js", "usage-history.js", "text/javascript; charset=utf-8") })
 {

@@ -79,6 +79,8 @@ try {
   assert.ok(await page.locator('.startup .skeleton').count()>0);
   assert.ok(await page.getByRole('button',{name:'Sign in to another account',exact:true}).isDisabled());
   assert.equal(await page.getByRole('button',{name:'Hide to tray',exact:true}).count(),1);
+  assert.equal(await page.evaluate(()=>window.bridgeMessages.filter(m=>m.action==='painted').length),0,
+    'Do not reveal the native window before the initial account snapshot');
   // About is usable before accounts load and through the same native tray message.
   aboutFailure=true;
   await page.getByRole('button',{name:'About Headroom',exact:true}).click();
@@ -121,8 +123,13 @@ try {
   await page.setViewportSize({width:1200,height:780});
   console.log('PASS About via footer and tray bridge, accurate metadata, license, external links, retry, focus and small-window layout');
   const pending=fixture.map(a=>({...a,signedIn:false,updatedAt:null,usage:null}));
+  assert.equal(await page.evaluate(()=>window.bridgeMessages.filter(m=>m.action==='painted').length),0,
+    'Time passing and other painted content cannot bypass the initial account snapshot');
   state={accounts:pending,login:null};hold=false;held.splice(0).forEach(send=>send());
   await page.locator('.card').first().waitFor();
+  await page.waitForFunction(()=>window.bridgeMessages.some(m=>m.action==='painted'));
+  assert.ok(await page.evaluate(()=>performance.getEntriesByName('first-contentful-paint').length>0),
+    'Native reveal follows a real content paint');
   assert.equal(await page.locator('.status.loading').count(),3);
   assert.equal(await page.locator('.overview .metric-value,.card .count,.quota-value,.runway-value').count(),0);
   assert.equal(await page.getByRole('button',{name:'Sign in',exact:true}).count(),0);
@@ -328,6 +335,8 @@ try {
   await page.getByRole('button',{name:'Clear search',exact:true}).click();
   assert.equal(await page.locator('.card').count(),8);
   console.log('PASS early-estimate states, eight-account roster, search, and totals independent of account search');
+  assert.equal(await page.evaluate(()=>window.bridgeMessages.filter(m=>m.action==='painted').length),1,
+    'Polling, theme changes and navigation never request another startup reveal');
   const multi={...fixture[2],usage:{...fixture[2].usage,quotas:[...fixture[2].usage.quotas,{bucket:'codex',bucketId:'codex',window:'5 hours',windowMinutes:300,remaining:80,resetsAt:future},{bucket:'other model',bucketId:'other',window:'Weekly',windowMinutes:10080,remaining:null,resetsAt:null}]}};
   await publish([fixture[0],fixture[1],multi]);
   assert.equal(await page.locator('.card').last().locator('.quota').count(),3);
@@ -353,6 +362,7 @@ try {
   console.log('PASS history failure replaces indefinite loading with an explicit, working retry');
   state=null;await page.reload({waitUntil:'domcontentloaded'});
   await page.locator('[role=alert]').waitFor();
+  await page.waitForFunction(()=>window.bridgeMessages.some(m=>m.action==='painted'));
   assert.equal(await page.locator('.empty,.metric-value,.startup').count(),0);
   assert.deepEqual(errors,[]);
   console.log('PASS multiple quotas, unknown balances, sign-in recovery, empty accounts, connection errors, and window bridge');

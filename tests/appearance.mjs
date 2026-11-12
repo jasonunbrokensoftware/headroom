@@ -73,6 +73,9 @@ try {
   assert.deepEqual(await (await api()).json(), { theme: 'ember' });
   await pageTheme('ember');
   assert.ok((await (await fetch(origin + '/appearance.js')).text()).includes('resolveTheme'));
+  const startup = await fetch(origin + '/startup.js');
+  assert.equal(startup.status,200,'The compiled EXE serves its startup paint handshake');
+  assert.match(await startup.text(),/export async function afterFirstPaint/);
   assert.equal((await fetch(origin + '/headroom-unknown.svg')).status, 404);
   for (const theme of ['orchard', 'lagoon', 'rosewood', 'classic', 'graphite', 'ember']) {
     const result = await api({ theme });

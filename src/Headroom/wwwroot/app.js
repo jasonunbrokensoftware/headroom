@@ -2,6 +2,7 @@ import { createApp } from './vue.js';
 import { summarizeUsage, isAccountLoading } from './usage-totals.js';
 import { forecastUsage, historySeries, plotHistory, historyColor } from './usage-history.js';
 import { themes, resolveTheme } from './appearance.js';
+import { afterFirstPaint } from './startup.js';
 
 const initial = location.hash.slice(1);
 if (initial) { sessionStorage.setItem('session', initial); history.replaceState(null, '', '/'); }
@@ -168,5 +169,33 @@ createApp({
       return (days ? days+'d ' : '')+(hours ? hours+'h ' : '')+(rest || (!days&&!hours) ? rest+'m' : '');
     }
   },
-  mounted() { document.getElementById('boot-status')?.remove(); window.external?.receiveMessage?.(message => { if (message === 'window:maximized') this.maximized = true; else if (message === 'window:restored') this.maximized = false; else if (message === 'window:tray') this.trayAvailable = true; else if (message === 'window:no-tray') this.trayAvailable = false; else if (message === 'window:about') this.showAbout(); }); this.windowAction('ready'); this.load(); this.poll = setInterval(() => this.load(), 3000); this.clock = setInterval(() => this.now = Date.now(), 1000); document.addEventListener('click',()=>{this.closeAccountMenu();this.closeThemeMenu();}); document.addEventListener('keydown',event=>{if(event.key==='Escape'){if(this.themeOpen)this.closeThemeMenu(true);else this.closeAccountMenu(true);}});window.addEventListener('resize',()=>{if(this.themeOpen)this.positionThemeMenu();}); document.addEventListener('visibilitychange',()=>{if(!document.hidden){this.load();this.loadHistory();}}); }
+  mounted() {
+    document.getElementById('boot-status')?.remove();
+    window.external?.receiveMessage?.(message => {
+      if (message === 'window:maximized') this.maximized = true;
+      else if (message === 'window:restored') this.maximized = false;
+      else if (message === 'window:tray') this.trayAvailable = true;
+      else if (message === 'window:no-tray') this.trayAvailable = false;
+      else if (message === 'window:about') this.showAbout();
+    });
+    this.windowAction('ready');
+    this.load().then(async () => {
+      await this.$nextTick();
+      await afterFirstPaint();
+      this.windowAction('painted');
+    });
+    this.poll = setInterval(() => this.load(), 3000);
+    this.clock = setInterval(() => this.now = Date.now(), 1000);
+    document.addEventListener('click', () => { this.closeAccountMenu(); this.closeThemeMenu(); });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        if (this.themeOpen) this.closeThemeMenu(true);
+        else this.closeAccountMenu(true);
+      }
+    });
+    window.addEventListener('resize', () => { if (this.themeOpen) this.positionThemeMenu(); });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) { this.load(); this.loadHistory(); }
+    });
+  }
 }).mount('#app');

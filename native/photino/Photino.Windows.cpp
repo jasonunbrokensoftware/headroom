@@ -13,6 +13,9 @@
 #include <limits>
 #include <WebView2EnvironmentOptions.h>
 #include <Shellscalingapi.h>
+#ifdef PHOTINO_STATIC
+#include "../Headroom.Window.h"
+#endif
 
 #pragma comment(lib, "Shcore.lib")
 #pragma comment(lib, "Urlmon.lib")
@@ -283,11 +286,13 @@ Photino::Photino(PhotinoInitParams* initParams)
 	if (initParams->CenterOnInitialize)
 		Photino::Center();
 
+#ifndef PHOTINO_STATIC
 	if (initParams->Minimized)
 		SetMinimized(true);
 
 	if (initParams->Maximized)
 		SetMaximized(true);
+#endif
 
 	if (initParams->Resizable == false)
 		SetResizable(false);
@@ -1120,7 +1125,8 @@ void Photino::AttachWebView()
 
 						RefitContent();
 
-						FocusWebView2();
+						if (IsWindowVisible(_hWnd) && !(GetWindowLongPtrW(_hWnd, GWL_EXSTYLE) & WS_EX_NOACTIVATE))
+							FocusWebView2();
 
 						return S_OK;
 					}).Get());
@@ -1257,14 +1263,22 @@ void Photino::SetWebView2RuntimePath(AutoString pathToWebView2)
 
 void Photino::Show(bool isAlreadyShown)
 {
+#ifdef PHOTINO_STATIC
+	// Headroom's first frame renders under a DWM cloak. Vue releases it after paint.
+	HRESULT startup = Headroom_BeginWindowStartup(_hWnd);
+	if (FAILED(startup))
+	{
+		MessageBoxW(nullptr, L"Could not prepare Headroom's window for rendering.", L"Headroom", MB_OK | MB_ICONERROR);
+		exit(1);
+	}
+#else
 	if (!isAlreadyShown)
 		ShowWindow(_hWnd, SW_SHOWDEFAULT);	//causes maximized and minimized to not work
+#endif
 
 	UpdateWindow(_hWnd);
 
-	// Strangely, it only works to create the webview2 *after* the window has been shown,
-	// so defer it until here. This unfortunately means you can't call the Navigate methods
-	// until the window is shown.
+	// A cloaked host is composited, allowing WebView2 to paint before the user sees it.
 	if (!_webviewController)
 	{
 		if (wcsnlen(_webview2RuntimePath, _countof(_webview2RuntimePath)) > 0 || Photino::EnsureWebViewIsInstalled())

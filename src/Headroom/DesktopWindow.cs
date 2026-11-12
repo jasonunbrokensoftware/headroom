@@ -14,13 +14,14 @@ internal sealed class DesktopWindow
     private bool webReady;
     private SystemTray? tray;
     private WindowIcon? windowIcon;
-    private bool hideOnReady;
+    private StartupVisibility visibility = new(false);
+    private volatile bool activationRequested;
     private bool aboutRequested;
 
     // Called on the application's original STA thread, also the GTK main thread on Linux.
     public void Run(DesktopStart start, Action stop)
     {
-        hideOnReady = start.Background;
+        visibility = new(start.Background && OperatingSystem.IsWindows() && !activationRequested);
         string iconFile = AppIcon.WindowIcon(start.DataDirectory);
         if (OperatingSystem.IsWindows()) WindowIcon.PrepareTaskbar(iconFile);
         // WebView2's environment override takes precedence over its API parameter.
@@ -36,7 +37,6 @@ internal sealed class DesktopWindow
             .SetSize(1200, 780)
             .SetMinSize(680, 480)
             .SetResizable(true)
-            .SetMinimized(start.Background)
             .SetTemporaryFilesPath(Path.Combine(start.DataDirectory, "webview"))
             .SetContextMenuEnabled(false)
             .SetDevToolsEnabled(false)
@@ -51,13 +51,16 @@ internal sealed class DesktopWindow
             .RegisterWindowCreatedHandler((_, _) =>
             {
                 created = true;
+                if (activationRequested) visibility.RequestShow();
                 WindowGestures.Configure(window!);
                 if (OperatingSystem.IsWindows())
                 {
                     windowIcon = new(window!.WindowHandle);
                     windowIcon.Set(iconFile, requireTaskbarUpdate: false);
                     tray = new(window!.WindowHandle, iconFile,
-                        () => _ = Task.Run(async () => { try { await start.Refresh(); } catch { } }), RequestClose, ShowAbout);
+                        () => _ = Task.Run(async () => { try { await start.Refresh(); } catch { } }), RequestClose, Activate, ShowAbout);
+                    // A failed tray registration must not leave the application unreachable.
+                    if (!tray.Available) visibility.RequestShow();
                 }
                 if (closeRequested) window!.Close();
             })
@@ -87,9 +90,12 @@ internal sealed class DesktopWindow
 
     public void Activate()
     {
-        if (!created || closing) return;
+        if (closing) return;
+        activationRequested = true;
+        if (!created) return;
         window!.Invoke(() =>
         {
+            if (!visibility.RequestShow()) return;
             if (OperatingSystem.IsWindows() && tray is not null) tray.Show();
             else window.SetMinimized(false).SetTopMost(true).SetTopMost(false);
         });
@@ -98,8 +104,8 @@ internal sealed class DesktopWindow
     // The tray callback runs on the window thread. Queue early requests until Vue is ready.
     private void ShowAbout()
     {
-        hideOnReady = false;
         aboutRequested = true;
+        Activate();
         if (webReady && !closing)
         {
             window!.SendWebMessage("window:about");
@@ -128,7 +134,13 @@ internal sealed class DesktopWindow
                 case "ready":
                     webReady = true; SendState();
                     if (aboutRequested) ShowAbout();
-                    if (hideOnReady && OperatingSystem.IsWindows()) { tray?.Hide(); hideOnReady = false; }
+                    break;
+                case "painted":
+                    if (!visibility.Painted)
+                    {
+                        bool reveal = visibility.CompletePaint();
+                        if (OperatingSystem.IsWindows()) NativeDesktop.CompleteWindowStartup(window!.WindowHandle, reveal ? 1 : 0);
+                    }
                     break;
                 case "minimize": window!.SetMinimized(true); break;
                 case "maximize": window!.SetMaximized(!window.Maximized); SendState(); break;

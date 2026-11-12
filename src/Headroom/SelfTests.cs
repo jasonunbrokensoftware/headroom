@@ -8,6 +8,15 @@ internal static class SelfTests
     {
         void Check(bool pass, string text) { if (!pass) throw new Exception(text); Console.WriteLine("PASS " + text); }
         HistoryTests.Run(Check);
+        var foreground = new StartupVisibility(false);
+        Check(!foreground.Painted && foreground.CompletePaint(), "Normal launch waits for paint before showing");
+        var background = new StartupVisibility(true);
+        Check(!background.CompletePaint() && background.RequestShow(), "Background launch stays in tray until explicitly opened");
+        var earlyOpen = new StartupVisibility(true);
+        Check(!earlyOpen.RequestShow() && earlyOpen.CompletePaint(), "Early tray activation is queued until paint");
+        Check(Program.ShouldActivateExisting([]) && !Program.ShouldActivateExisting(["--background"]) &&
+            !Program.ShouldActivateExisting(["--headless"]) && !Program.ShouldActivateExisting(["--no-browser"]),
+            "Windows startup never activates an already-running window");
         using var sample = JsonDocument.Parse("""
         {"ordinaryUsageAllowed":false,"rateLimitsByLimitId":{"codex":{"planType":"prolite","credits":{"balance":"12.5","hasCredits":true,"unlimited":false},"primary":{"usedPercent":25,"windowDurationMins":300,"resetsAt":5000},
         "secondary":{"usedPercent":100,"windowDurationMins":10080,"resetsAt":7000}},
@@ -54,6 +63,15 @@ internal static class SelfTests
             Check(SystemTray.NotificationAction(true, 0x401) == 1 && SystemTray.NotificationAction(true, 0x202) == 0,
                 "Modern tray keyboard activation works without duplicate legacy mouse activation");
             Check(NativeDesktop.WebViewRuntimeAvailable() == 1, "Statically linked Photino and WebView2 loader resolve the installed runtime without a window");
+            string? previousProfile = Environment.GetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER");
+            string probeProfile = Path.Combine(folder, "startup-webview");
+            Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", probeProfile);
+            try
+            {
+                int result = NativeDesktop.TestStartupRendering(probeProfile);
+                Check(result == 0, "WebView2 paints while DWM-cloaked without activation or a taskbar button; background completion stays hidden (stage " + result + ")");
+            }
+            finally { Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", previousProfile); }
         }
         string iconFile = AppIcon.WindowIcon(folder);
         Check(Path.GetFileNameWithoutExtension(iconFile) == "headroom-graphite", "Native window, taskbar and tray use the fixed Graphite icon");

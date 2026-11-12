@@ -60,5 +60,6 @@ assert.deepEqual(await readdir(directory), ['Headroom.exe']);
 const run = spawnSync(exe, ['--self-test'], { cwd: directory, windowsHide: true, encoding: 'utf8', timeout: 60000 });
 assert.equal(run.status, 0, run.stdout + run.stderr);
 assert.ok(run.stdout.includes('Statically linked Photino and WebView2 loader'));
+assert.ok(run.stdout.includes('WebView2 paints while DWM-cloaked'));
 assert.ok(!(await readdir(directory)).some(name => name.endsWith('.dll')));
-console.log('PASS native EXE imports only system DLLs and runs native loader tests alone in an empty folder');
+console.log('PASS native EXE imports only system DLLs; loader and cloaked startup rendering pass in isolation');

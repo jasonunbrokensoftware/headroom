@@ -6,6 +6,10 @@ internal static partial class NativeDesktop
 {
     [LibraryImport("Photino.Native", EntryPoint = "Headroom_WebViewRuntimeAvailable")]
     internal static partial int WebViewRuntimeAvailable();
+    [LibraryImport("Photino.Native", EntryPoint = "Headroom_CompleteWindowStartup")]
+    internal static partial int CompleteWindowStartup(nint window, int reveal);
+    [LibraryImport("Photino.Native", EntryPoint = "Headroom_TestStartupRendering", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial int TestStartupRendering(string directory);
     [LibraryImport("Photino.Native", EntryPoint = "Headroom_SetTaskbarIcon", StringMarshalling = StringMarshalling.Utf16)]
     internal static partial int SetTaskbarIcon(nint window, string executable, string icon, string pinnedDirectory, string desktopDirectory, string startMenuDirectory);
     [LibraryImport("Photino.Native", EntryPoint = "Headroom_ClearTaskbarIcon")]

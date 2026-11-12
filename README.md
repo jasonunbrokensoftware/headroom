@@ -35,6 +35,8 @@ The Windows EXE embeds the frontend and statically links the desktop shell and W
 
 Closing the window hides Headroom in the tray and keeps monitoring active. Use **Quit Headroom** in the tray menu to exit.
 
+Normal launches reveal the window after the interface has painted. **Start with Windows** launches with `--background`: only the tray icon appears, with no window or taskbar button. Opening Headroom from the tray reveals the prepared interface. A background launch also leaves an already-running window alone.
+
 ## Portable data and history
 
 `settings.json` and `data/` are created beside the EXE. Move them together with the executable to preserve accounts, settings, and history. **The data folder contains sign-in credentials and must remain private.** Runtime data and configuration are excluded from Git.

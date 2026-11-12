@@ -14,14 +14,14 @@ internal sealed unsafe partial class SystemTray : IDisposable
     private static readonly ConcurrentDictionary<nint, SystemTray> Instances = new();
     private readonly nint window;
     private nint icon;
-    private readonly Action refresh, quit, about;
+    private readonly Action refresh, quit, open, about;
     private readonly uint taskbarCreated;
     private bool version4, menuPending;
     internal static int NativeDataSize => sizeof(NotifyIconData);
     public bool Available { get; private set; }
-    public SystemTray(nint window, string iconFile, Action refresh, Action quit, Action about)
+    public SystemTray(nint window, string iconFile, Action refresh, Action quit, Action open, Action about)
     {
-        this.window = window; this.refresh = refresh; this.quit = quit; this.about = about;
+        this.window = window; this.refresh = refresh; this.quit = quit; this.open = open; this.about = about;
         icon = WindowIcon.Load(iconFile, 32);
         taskbarCreated = RegisterWindowMessageW("TaskbarCreated");
         Instances[window] = this;
@@ -76,7 +76,7 @@ internal sealed unsafe partial class SystemTray : IDisposable
         // Dismiss first, then apply the selection. Reopening reads the saved check state.
         switch (command)
         {
-            case 1: Show(); return;
+            case 1: open(); return;
             case 2: refresh(); break;
             case 3:
                 var settings = PortableStorage.Settings();
@@ -89,7 +89,7 @@ internal sealed unsafe partial class SystemTray : IDisposable
                 }
                 break;
             case 4: quit(); return;
-            case 5: Show(); about(); return;
+            case 5: about(); return;
         }
         var data = Data();
         Shell_NotifyIconW(3, ref data); // NIM_SETFOCUS: return focus after the tray menu closes.
@@ -114,7 +114,7 @@ internal sealed unsafe partial class SystemTray : IDisposable
                     uint action = (uint)((long)lParam & 0xffff);
                     switch (NotificationAction(tray.version4, action))
                     {
-                        case 1: tray.Show(); break;
+                        case 1: tray.open(); break;
                         case 2: tray.QueueMenu(); break;
                     }
                     return 0;
