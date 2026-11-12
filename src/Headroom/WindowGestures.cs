@@ -17,9 +17,12 @@ internal static partial class WindowGestures
         // DefWindowProc. WM_NCCALCSIZE below still hides the entire native frame.
         // https://learn.microsoft.com/en-us/windows/win32/dwm/customframe
         SetWindowLongPtrW(window.WindowHandle, -16, GetWindowLongPtrW(window.WindowHandle, -16) | 0x00C00000); // GWL_STYLE, WS_CAPTION
-        // The webview owns every visible edge. Suppress non-client rendering on
-        // Windows 10 and the independent DWM border accent on Windows 11.
-        uint renderingPolicy = 1, borderColor = 0xfffffffe; // DWMNCRP_DISABLED, DWMWA_COLOR_NONE
+        // Let DWM own the outer clip/shadow on Windows 11, while drawing no OS
+        // border. Disabling all non-client rendering also disables its corners.
+        // Older Windows uses a clean square, fully custom frame instead.
+        uint borderColor = 0xfffffffe, cornerPreference = 2; // COLOR_NONE, DWMWCP_ROUND
+        bool roundedFrame = DwmSetWindowAttribute(window.WindowHandle, 33, ref cornerPreference, sizeof(uint)) >= 0;
+        uint renderingPolicy = roundedFrame ? 2u : 1u; // DWMNCRP_ENABLED / DISABLED
         DwmSetWindowAttribute(window.WindowHandle, 2, ref renderingPolicy, sizeof(uint));
         DwmSetWindowAttribute(window.WindowHandle, 34, ref borderColor, sizeof(uint));
         SetWindowPos(window.WindowHandle, 0, 0, 0, 0, 0, 0x0037); // FRAMECHANGED, no move/size/activation/z-order
