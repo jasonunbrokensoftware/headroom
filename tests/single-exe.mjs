@@ -4,6 +4,9 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 
 const source = process.env.HEADROOM_TEST_EXE || path.resolve('artifacts/single-exe/Headroom.exe');
+const taskbarSource = await readFile(path.resolve('native/Headroom.Taskbar.cpp'), 'utf8');
+assert.ok(!/\b(?:ShowWindow|SetWindowPlacement|SetWindowPos|SetForegroundWindow|DeleteTab|AddTab)\s*\(/.test(taskbarSource),
+  'Icon synchronization must not change window visibility, placement, focus or taskbar membership');
 const directory = path.resolve('.test-data/single-exe-' + Date.now());
 await mkdir(directory, { recursive: true });
 const exe = path.join(directory, 'Headroom.exe');

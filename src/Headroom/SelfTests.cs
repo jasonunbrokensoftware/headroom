@@ -87,7 +87,7 @@ internal static class SelfTests
             Directory.CreateDirectory(pins);
             int result = NativeDesktop.TestTaskbarIcons(pins, Environment.ProcessPath!,
                 AppIcon.WindowIcon(folder, "classic"), AppIcon.WindowIcon(folder, "ember"));
-            Check(result == 0, "Pinned shortcut and taskbar-group icon follow repeated theme changes; other targets and launch details stay intact (stage " + result + ")");
+            Check(result == 0, "Shell-returned shortcut icon pixels follow repeated theme changes; other targets and launch details stay intact (stage " + result + ")");
         }
         await using (var manager = new AccountManager(folder))
         {

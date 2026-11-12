@@ -12,12 +12,15 @@ internal sealed partial class WindowIcon(nint window) : IDisposable
     private nint small, large;
     private static readonly string PinnedDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "Microsoft", "Internet Explorer", "Quick Launch", "User Pinned", "TaskBar");
+    private static int UpdateTaskbar(nint handle, string icon) => NativeDesktop.SetTaskbarIcon(handle, Environment.ProcessPath!, icon,
+        PinnedDirectory, Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+        Environment.GetFolderPath(Environment.SpecialFolder.StartMenu));
     internal static void PrepareTaskbar(string icon)
     {
-        // Migrate this EXE's existing pin before its first window is shown.
+        // Synchronize this EXE's launch shortcuts before its first window is shown.
         // A locked/read-only pin must not prevent the app from opening. A theme
         // change reports synchronization failures through the appearance API.
-        _ = NativeDesktop.SetTaskbarIcon(0, Environment.ProcessPath!, icon, PinnedDirectory, 0);
+        _ = UpdateTaskbar(0, icon);
     }
     public void Set(string path, bool requireTaskbarUpdate = true)
     {
@@ -27,10 +30,10 @@ internal sealed partial class WindowIcon(nint window) : IDisposable
         try { nextLarge = Load(path, GetSystemMetricsForDpi(11, dpi)); } // SM_CXICON
         catch { Release(nextSmall); throw; }
         SendMessageW(window, 0x80, 0, nextSmall); // WM_SETICON, ICON_SMALL
-        SendMessageW(window, 0x80, 1, nextLarge); // ICON_BIG (taskbar / Alt+Tab)
+        SendMessageW(window, 0x80, 1, nextLarge); // ICON_BIG (window / Alt+Tab; grouped taskbar uses the Shell)
         Release(small); Release(large);
         small = nextSmall; large = nextLarge;
-        int result = NativeDesktop.SetTaskbarIcon(window, Environment.ProcessPath!, path, PinnedDirectory, requireTaskbarUpdate ? 1 : 0);
+        int result = UpdateTaskbar(window, path);
         if (requireTaskbarUpdate) Marshal.ThrowExceptionForHR(result);
     }
     internal static nint Load(string path, int size)

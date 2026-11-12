@@ -80,44 +80,51 @@ https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-seticon
 https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-loadimagew
 https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shell_notifyiconw
 
-Pinned-taskbar correction: WM_SETICON controls the window icon, but an existing
-pin can still reference Headroom.exe's original icon. The Windows adapter now
-updates the icon and stable Headroom.Desktop identity of existing .lnk pins whose
-resolved target matches this executable. It preserves launch arguments and other
-link details, leaves unrelated targets alone, and sends a targeted shell change
-notification. The window publishes its themed relaunch icon and sets its stable
-AppUserModelID last. Existing pins are synchronized
-before showing the first window; new pins receive the same themed metadata.
-Window properties are cleared during destruction. No re-pinning, Explorer restart,
-global icon-cache reset, or theme-specific change of application identity is used.
-An isolated native regression cycles themes using scratch .lnk files and a
-message-only HWND. It reads back the actual shell properties, verifies preserved
-launch details, and confirms a same-named shortcut to another EXE is untouched.
-It creates no visible window and does not modify real taskbar pins.
+Windows taskbar icons: documented behavior and implementation
+
+The window icon and grouped taskbar icon are different. Microsoft explains that
+the group icon can come from Start menu or desktop shortcuts. WM_SETICON alone
+does not guarantee an update to a pinned or combined taskbar button.
+https://devblogs.microsoft.com/oldnewthing/20150812-00/?p=91831/
+https://github.com/microsoft/WindowsAppSDK/issues/2730
+
+Microsoft's AppUserModelID guidance says to keep the same identity across the
+process and its launch shortcuts. When a shortcut exists, use its properties
+instead of window relaunch properties. The adapter updates existing per-user
+desktop, Start menu and taskbar links only when their target matches this EXE.
+It preserves arguments, working directory and descriptions, and never pins an
+application or changes its identity per theme. Older redundant relaunch values
+are removed. If no shortcut exists, the window supplies relaunch metadata using
+the documented ICO resource format (path.ico,0), and sets its stable ID last.
+https://learn.microsoft.com/en-us/windows/win32/shell/appids
 https://learn.microsoft.com/en-us/windows/win32/properties/props-system-appusermodel-relaunchiconresource
 https://learn.microsoft.com/en-us/windows/win32/properties/props-system-appusermodel-id
-https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shgetpropertystoreforwindow
 
-Live follow-up established that the window's actual icon pixels and relaunch
-metadata already reflected the selected theme, while Explorer's button retained
-an older image. Read-back tests alone cannot verify the taskbar's visible result.
-Theme changes now re-register an unpinned button through ITaskbarList. A pinned
-button additionally needs a window visibility cycle to rebuild Explorer's cached
-image; the existing HWND, WebView, position, maximized/minimized state, and focus
-are retained. Startup and hidden/tray-only windows skip this refresh. No Explorer
-restart, global cache clear, new app identity, or unpin/re-pin operation is used.
+Launch links reference the immutable portable data/icons/headroom-{theme}.ico.
+Before changing a shortcut, the adapter captures its old Shell icon location,
+index and flags through IExtractIcon::GetIconLocation, and its system image-list
+index through SHGetFileInfo(SHGFI_SYSICONINDEX). SHUpdateImage then notifies the
+Shell of the changed image using those OLD parameters, as Microsoft specifies.
+Targeted SHCNE_UPDATEITEM notifications announce changed shortcut files. Reusing
+and overwriting one ICO path failed the cached-pixel regression on this system;
+separate immutable theme files passed repeated switches in both directions.
+https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shupdateimagew
+https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-iextracticonw-geticonlocation
+https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishelllinkw-seticonlocation
 
-The relaunch icon property now uses the plain .ico path. A comma/index suffix can
-be interpreted as part of the filename by the modern taskbar, yielding the generic
-document icon. IShellLink.SetIconLocation still receives index zero separately.
-The native regression verifies plain paths, repeated updates, preserved shortcuts,
-and that message-only windows remain hidden. Visible button refresh needs manual
-verification in the user's pinned/unpinned configuration.
-Related implementation reports and API reference:
-https://github.com/microsoft/WindowsAppSDK/issues/2730
-https://github.com/Syngnat/GoNavi/blob/main/internal/app/application_icon_taskbar_recreate_windows.go
-https://github.com/Syngnat/GoNavi/blob/main/internal/app/application_icon_taskbar_windows.go
-https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-itaskbarlist
+The previous visibility-cycle and DeleteTab/AddTab workarounds were removed.
+Theme updates never hide/show, activate, reposition or recreate the window/button.
+They must not disturb Windows Snap. No Explorer restart or global cache reset.
+
+Validation uses scratch links and a message-only HWND. It cycles cached icons,
+checks the pixels returned by the Shell (rendered into an in-memory bitmap, not
+a screen capture), preserves unrelated targets and launch details, verifies
+shortcut/no-shortcut metadata, and leaves hidden windows hidden. This validates
+Shell extraction/cache behavior; it does NOT establish that Explorer's visible
+grouped taskbar button has repainted. Microsoft's documentation does not promise
+synchronous repaint of every taskbar configuration. User verification of pinned,
+unpinned, snapped and maximized cases remains necessary. Do not claim otherwise
+based on metadata or API success alone.
 
 Frame implementation references:
 https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute
