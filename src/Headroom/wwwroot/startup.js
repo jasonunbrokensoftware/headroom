@@ -16,6 +16,6 @@ export async function afterFirstPaint() {
     });
   }
   // Also cover DOM changes after the first paint. WebKit can use this path
-  // without Paint Timing support when a Linux desktop build is added.
+  // without Paint Timing support on Linux.
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }

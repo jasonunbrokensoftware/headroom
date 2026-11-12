@@ -30,7 +30,7 @@ try {
   const html = await (await fetch(origin + '/')).text();
   assert.ok(html.includes('<title>Headroom</title>') && html.includes('<h1>Headroom</h1>'));
   assert.ok((await (await fetch(origin + '/vue.js')).text()).includes('Vue'));
-  assert.ok(html.includes('Available across accounts'));
+  assert.ok(html.includes('id="overview-heading">Available capacity'));
   assert.ok((await (await fetch(origin + '/usage-totals.js')).text()).includes('summarizeUsage'));
   assert.ok((await (await fetch(origin + '/usage-history.js')).text()).includes('forecastUsage'));
   assert.equal((await fetch(origin + '/api/history')).status, 401);
@@ -59,18 +59,31 @@ try {
   await api('/accounts/' + first.id, 'DELETE');
   assert.equal((await api('/accounts')).accounts.length, 6);
   await api('/refresh', 'POST');
-  state = await api('/accounts');
-  assert.ok(state.accounts.every(a=>!a.busy && a.updatedAt && !a.signedIn), 'Signed-out refresh');
+  // Startup can already own a refresh; duplicate requests intentionally skip it.
+  for(let i=0;i<200;i++) {
+    state = await api('/accounts');
+    if(state.accounts.every(a=>!a.busy))break;
+    await new Promise(r=>setTimeout(r,100));
+  }
+  assert.ok(state.accounts.every(a=>!a.busy && a.updatedAt && !a.signedIn),
+    'Signed-out refresh: '+JSON.stringify(state.accounts.map(({busy,updatedAt,signedIn,error})=>({busy,updatedAt,signedIn,error}))));
   console.log('PASS remove account and refresh six isolated profiles');
   const saved = JSON.parse(await readFile(path.join(data,'accounts.json'),'utf8'));
   assert.equal(saved.length,6);
   console.log('PASS persisted account list');
   const bytes = await readFile(exe);
-  const pe = bytes.readUInt32LE(0x3c), opt = pe + 24;
-  assert.equal(bytes.readUInt16LE(opt), 0x20b);
-  assert.equal(bytes.readUInt16LE(opt+68), 2, 'Windows GUI executable');
-  assert.equal(bytes.readUInt32LE(opt+112+14*8), 0, 'Native PE has no CLR header');
-  console.log('PASS x64 GUI Native AOT executable (no CLR header)');
+  if(process.platform === 'win32') {
+    const pe = bytes.readUInt32LE(0x3c), opt = pe + 24;
+    assert.equal(bytes.readUInt16LE(opt), 0x20b);
+    assert.equal(bytes.readUInt16LE(opt+68), 2, 'Windows GUI executable');
+    assert.equal(bytes.readUInt32LE(opt+112+14*8), 0, 'Native PE has no CLR header');
+    console.log('PASS x64 GUI Native AOT executable (no CLR header)');
+  } else {
+    assert.deepEqual([...bytes.subarray(0,5)],[0x7f,0x45,0x4c,0x46,2],'64-bit ELF');
+    assert.equal(bytes[5],1,'Little-endian ELF');
+    assert.equal(bytes.readUInt16LE(18),62,'x86-64 machine');
+    console.log('PASS Linux x64 native executable');
+  }
 } finally {
   await api('/quit','POST').catch(()=>{});
   const code = await Promise.race([done,new Promise(r=>setTimeout(()=>r('timeout'),12000))]);

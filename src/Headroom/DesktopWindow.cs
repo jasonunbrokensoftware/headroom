@@ -12,7 +12,7 @@ internal sealed class DesktopWindow
     private volatile bool closing;
     private volatile bool closeRequested;
     private bool webReady;
-    private SystemTray? tray;
+    private IDesktopTray? tray;
     private WindowIcon? windowIcon;
     private StartupVisibility visibility = new(false);
     private volatile bool activationRequested;
@@ -21,7 +21,7 @@ internal sealed class DesktopWindow
     // Called on the application's original STA thread, also the GTK main thread on Linux.
     public void Run(DesktopStart start, Action stop)
     {
-        visibility = new(start.Background && OperatingSystem.IsWindows() && !activationRequested);
+        visibility = new(start.Background && !activationRequested);
         string iconFile = AppIcon.WindowIcon(start.DataDirectory);
         if (OperatingSystem.IsWindows()) WindowIcon.PrepareTaskbar(iconFile);
         // WebView2's environment override takes precedence over its API parameter.
@@ -57,16 +57,20 @@ internal sealed class DesktopWindow
                 {
                     windowIcon = new(window!.WindowHandle);
                     windowIcon.Set(iconFile, requireTaskbarUpdate: false);
-                    tray = new(window!.WindowHandle, iconFile,
+                    tray = new SystemTray(window!.WindowHandle, iconFile,
                         () => _ = Task.Run(async () => { try { await start.Refresh(); } catch { } }), RequestClose, Activate, ShowAbout);
-                    // A failed tray registration must not leave the application unreachable.
-                    if (!tray.Available) visibility.RequestShow();
                 }
+                else if (OperatingSystem.IsLinux())
+                    tray = new LinuxTray(iconFile,
+                        () => _ = Task.Run(async () => { try { await start.Refresh(); } catch { } }),
+                        RequestClose, Activate, ShowAbout, TrayChanged);
+                // A desktop without a tray must not leave the application unreachable.
+                if (tray?.Available != true) visibility.RequestShow();
                 if (closeRequested) window!.Close();
             })
             .RegisterWindowClosingHandler((_, _) =>
             {
-                if (!closeRequested && OperatingSystem.IsWindows() && tray?.Available == true)
+                if (!closeRequested && tray?.Available == true)
                 { tray.Hide(); return true; }
                 closing = true;
                 stop();
@@ -77,7 +81,8 @@ internal sealed class DesktopWindow
         try { window.WaitForClose(); }
         finally
         {
-            if (OperatingSystem.IsWindows()) { tray?.Dispose(); windowIcon?.Dispose(); }
+            tray?.Dispose();
+            if (OperatingSystem.IsWindows()) windowIcon?.Dispose();
             closing = true; created = false; stop();
         }
     }
@@ -96,7 +101,7 @@ internal sealed class DesktopWindow
         window!.Invoke(() =>
         {
             if (!visibility.RequestShow()) return;
-            if (OperatingSystem.IsWindows() && tray is not null) tray.Show();
+            if (tray is not null) tray.Show();
             else window.SetMinimized(false).SetTopMost(true).SetTopMost(false);
         });
     }
@@ -118,8 +123,32 @@ internal sealed class DesktopWindow
         if (created && webReady && !closing)
         {
             window!.SendWebMessage(window.Maximized ? "window:maximized" : "window:restored");
-            window.SendWebMessage(OperatingSystem.IsWindows() && tray?.Available == true ? "window:tray" : "window:no-tray");
+            window.SendWebMessage(tray?.Available == true ? "window:tray" : "window:no-tray");
         }
+    }
+
+    private void TrayChanged()
+    {
+        SendState();
+        if (visibility.Painted && tray?.Available == false) Activate();
+    }
+
+    internal int TestState()
+    {
+        int result = 0;
+        if (created && !closing && OperatingSystem.IsLinux()) window!.Invoke(() =>
+        {
+            if (OperatingSystem.IsLinux()) result = LinuxDesktop.WindowState();
+        });
+        return result;
+    }
+    internal void TestAction(int command)
+    {
+        if (created && !closing && OperatingSystem.IsLinux()) window!.Invoke(() =>
+        {
+            if (command == 0) window.Close();
+            else if (OperatingSystem.IsLinux()) LinuxDesktop.TestMenu(command);
+        });
     }
 
     private void HandleMessage(string message)
@@ -140,6 +169,7 @@ internal sealed class DesktopWindow
                     {
                         bool reveal = visibility.CompletePaint();
                         if (OperatingSystem.IsWindows()) NativeDesktop.CompleteWindowStartup(window!.WindowHandle, reveal ? 1 : 0);
+                        else if (OperatingSystem.IsLinux()) LinuxDesktop.CompleteStartup(reveal ? 1 : 0);
                     }
                     break;
                 case "minimize": window!.SetMinimized(true); break;

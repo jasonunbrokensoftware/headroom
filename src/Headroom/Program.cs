@@ -14,6 +14,11 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        if (args.Contains("--install-desktop") && OperatingSystem.IsLinux())
+        {
+            try { LinuxAutostart.InstallLauncher(); return 0; }
+            catch (Exception ex) { Console.Error.WriteLine("Could not install launcher: " + ex.Message); return 1; }
+        }
         if (args.Contains("--self-test")) return SelfTests.RunAsync(args.Contains("--integration-test")).GetAwaiter().GetResult();
         bool headless = args.Contains("--headless") || args.Contains("--no-browser");
         using var stop = new CancellationTokenSource();
@@ -163,6 +168,12 @@ app.MapPost("/api/login/open", () =>
     return Results.NoContent();
 });
 app.MapPost("/api/window/activate", () => { desktop.Activate(); return Results.NoContent(); });
+// Opt-in test hooks run only in an isolated virtual display, never by default.
+if (args.Contains("--desktop-test") && OperatingSystem.IsLinux())
+{
+    app.MapGet("/api/window/test-state", () => desktop.TestState().ToString());
+    app.MapPost("/api/window/test-action/{command:int}", (int command) => { desktop.TestAction(command); return Results.NoContent(); });
+}
 app.MapPost("/api/quit", () =>
 {
     _ = Task.Run(async () => { await Task.Delay(250); app.Lifetime.StopApplication(); });

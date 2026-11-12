@@ -52,8 +52,10 @@ internal sealed class CodexRpc : IAsyncDisposable
         {
             var standalone = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "bin", name);
             if (File.Exists(standalone)) return standalone;
+            foreach (string bundled in new[] { "/usr/lib/chatgpt/resources/codex", "/opt/ChatGPT/resources/codex", "/opt/Codex/resources/codex" })
+                if (File.Exists(bundled)) return bundled;
         }
-        throw new InvalidOperationException("Codex CLI was not found. Install Codex, place it in the tools folder beside Headroom.exe, or set codexPath in settings.json.");
+        throw new InvalidOperationException("Codex CLI was not found. Install Codex, place it in the tools folder beside Headroom, or set codexPath in settings.json.");
     }
 
     private CodexRpc(string home, bool migrateCredentials)

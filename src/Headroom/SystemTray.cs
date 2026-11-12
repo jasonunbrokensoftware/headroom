@@ -7,7 +7,7 @@ using Microsoft.Win32;
 namespace Headroom;
 
 [SupportedOSPlatform("windows")]
-internal sealed unsafe partial class SystemTray : IDisposable
+internal sealed unsafe partial class SystemTray : IDesktopTray
 {
     private const uint CallbackMessage = 0x8002;
     private const uint MenuMessage = 0x8003;

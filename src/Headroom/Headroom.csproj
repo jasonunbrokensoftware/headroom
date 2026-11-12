@@ -43,6 +43,22 @@
   <Target Name="BuildStaticPhotino" BeforeTargets="IlcCompile" Condition="'$(RuntimeIdentifier)' == 'win-x64'">
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/../../tools/Build-Native.ps1&quot; -WebView2Root &quot;$(PkgMicrosoft_Web_WebView2)&quot; -WilRoot &quot;$(PkgMicrosoft_Windows_ImplementationLibrary)&quot;" />
   </Target>
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'linux-x64'">
+    <HeadroomLinuxNative>$(MSBuildProjectDirectory)/../../native/obj/linux-x86_64</HeadroomLinuxNative>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == 'linux-x64'">
+    <DirectPInvokeList Include="$(MSBuildProjectDirectory)/../../native/Photino.Linux.pinvoke.txt" />
+    <NativeLibrary Include="$(HeadroomLinuxNative)/Photino.Static.a" />
+    <LinkerArg Include="@$(HeadroomLinuxNative)/link.rsp" />
+  </ItemGroup>
+  <Target Name="BuildStaticPhotinoLinux" BeforeTargets="IlcCompile" Condition="'$(RuntimeIdentifier)' == 'linux-x64'">
+    <Exec Command="bash &quot;$(MSBuildProjectDirectory)/../../tools/Build-Native-Linux.sh&quot;" />
+  </Target>
+  <Target Name="RemoveDynamicPhotinoLinux" AfterTargets="ComputeFilesToPublish" Condition="'$(RuntimeIdentifier)' == 'linux-x64' and '$(PublishAot)' == 'true'">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)%(Extension)' == 'Photino.Native.so'" />
+    </ItemGroup>
+  </Target>
   <Target Name="RemoveDynamicPhotinoFromPublish" AfterTargets="ComputeFilesToPublish" Condition="'$(RuntimeIdentifier)' == 'win-x64' and '$(PublishAot)' == 'true'">
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)%(Extension)' == 'Photino.Native.dll' or '%(Filename)%(Extension)' == 'WebView2Loader.dll'" />
