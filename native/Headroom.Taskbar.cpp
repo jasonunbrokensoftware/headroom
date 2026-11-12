@@ -64,7 +64,10 @@ HRESULT UpdateShortcut(const wchar_t* shortcut, const wchar_t* executable, const
     ComPtr<IPropertyStore> store;
     result = link.As(&store);
     if (FAILED(result)) return result;
-    result = SetText(store.Get(), PKEY_AppUserModel_RelaunchIconResource, std::wstring(icon) + L",0");
+    // Modern taskbar code resolves an ICO relaunch resource as a file path.
+    // Appending ",0" can become a nonexistent filename and show a generic page.
+    // IShellLink's icon index remains a separate argument to SetIconLocation.
+    result = SetText(store.Get(), PKEY_AppUserModel_RelaunchIconResource, icon);
     if (FAILED(result)) return result;
     result = SetText(store.Get(), PKEY_AppUserModel_ID, AppId);
     if (FAILED(result)) return result;
@@ -75,7 +78,7 @@ HRESULT UpdateShortcut(const wchar_t* shortcut, const wchar_t* executable, const
     return result;
 }
 
-HRESULT UpdatePinnedShortcuts(const wchar_t* directory, const wchar_t* executable, const wchar_t* icon) {
+HRESULT UpdatePinnedShortcuts(const wchar_t* directory, const wchar_t* executable, const wchar_t* icon, bool& pinned) {
     WIN32_FIND_DATAW found;
     HANDLE search = FindFirstFileW((std::wstring(directory) + L"\\*.lnk").c_str(), &found);
     if (search == INVALID_HANDLE_VALUE) {
@@ -87,6 +90,7 @@ HRESULT UpdatePinnedShortcuts(const wchar_t* directory, const wchar_t* executabl
         if (found.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
         result = UpdateShortcut((std::wstring(directory) + L"\\" + found.cFileName).c_str(), executable, icon);
         if (FAILED(result)) break;
+        if (result == S_OK) pinned = true;
     } while (FindNextFileW(search, &found));
     FindClose(search);
     return FAILED(result) ? result : S_OK;
@@ -100,21 +104,54 @@ HRESULT SetWindowProperties(HWND window, const wchar_t* executable, const wchar_
     if (FAILED(result)) return result;
     result = SetText(store.Get(), PKEY_AppUserModel_RelaunchDisplayNameResource, L"Headroom");
     if (FAILED(result)) return result;
-    result = SetText(store.Get(), PKEY_AppUserModel_RelaunchIconResource, std::wstring(icon) + L",0");
+    result = SetText(store.Get(), PKEY_AppUserModel_RelaunchIconResource, icon);
     if (FAILED(result)) return result;
-    // Set the stable identity LAST: this notifies the taskbar to refresh its
-    // group icon. WM_SETICON alone updates a window, not a pinned taskbar group.
+    // Keep the same application identity across themes. Reassigning the same
+    // ID updates metadata but does not reliably refresh Explorer's button image.
     // https://learn.microsoft.com/windows/win32/properties/props-system-appusermodel-id
     return SetText(store.Get(), PKEY_AppUserModel_ID, AppId);
 }
+
+HRESULT RecreateButton(HWND window) {
+    WINDOWPLACEMENT placement = { sizeof(WINDOWPLACEMENT) };
+    if (!GetWindowPlacement(window, &placement)) return HRESULT_FROM_WIN32(GetLastError());
+    bool active = GetForegroundWindow() == window;
+    // Explorer can retain a pinned group's image even after DeleteTab/AddTab.
+    // A visibility cycle rebuilds that button without closing/reloading the app.
+    // Keep placement (including maximized/minimized state) and keyboard focus.
+    ShowWindow(window, SW_HIDE);
+    BOOL restored = SetWindowPlacement(window, &placement);
+    DWORD error = restored ? ERROR_SUCCESS : GetLastError();
+    if (!restored) ShowWindow(window, static_cast<int>(placement.showCmd));
+    if (active) SetForegroundWindow(window);
+    return restored ? S_OK : HRESULT_FROM_WIN32(error);
 }
 
-extern "C" HRESULT Headroom_SetTaskbarIcon(HWND window, const wchar_t* executable, const wchar_t* icon, const wchar_t* pinnedDirectory) {
+HRESULT RefreshButton(HWND window, bool pinned) {
+    // Background/tray-only launches and message-only test windows must stay hidden.
+    if (!IsWindowVisible(window) || (GetWindowLongPtrW(window, GWL_STYLE) & WS_CHILD)) return S_OK;
+    if (pinned) return RecreateButton(window);
+    ComPtr<ITaskbarList> taskbar;
+    HRESULT result = CoCreateInstance(CLSID_TaskbarList, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&taskbar));
+    if (FAILED(result) || FAILED(result = taskbar->HrInit())) return result;
+    if (FAILED(result = taskbar->DeleteTab(window))) return result;
+    result = taskbar->AddTab(window);
+    // Never leave a visible window without its button if Explorer was restarting.
+    if (FAILED(result)) return RecreateButton(window);
+    if (GetForegroundWindow() == window) taskbar->ActivateTab(window);
+    return result;
+}
+}
+
+extern "C" HRESULT Headroom_SetTaskbarIcon(HWND window, const wchar_t* executable, const wchar_t* icon, const wchar_t* pinnedDirectory, int refresh) {
     Apartment apartment;
     if (FAILED(apartment.Status())) return apartment.Status();
-    HRESULT result = UpdatePinnedShortcuts(pinnedDirectory, executable, icon);
+    bool pinned = false;
+    HRESULT result = UpdatePinnedShortcuts(pinnedDirectory, executable, icon, pinned);
     if (FAILED(result)) return result;
-    return window ? SetWindowProperties(window, executable, icon) : SetCurrentProcessExplicitAppUserModelID(AppId);
+    if (!window) return SetCurrentProcessExplicitAppUserModelID(AppId);
+    result = SetWindowProperties(window, executable, icon);
+    return SUCCEEDED(result) && refresh ? RefreshButton(window, pinned) : result;
 }
 
 extern "C" void Headroom_ClearTaskbarIcon(HWND window) {
@@ -166,7 +203,7 @@ bool CheckTestShortcut(const wchar_t* path, const wchar_t* executable, const wch
     ComPtr<IPropertyStore> store;
     if (FAILED(link.As(&store))) return false;
     if (migrated) return HasText(store.Get(), PKEY_AppUserModel_ID, AppId) &&
-        HasText(store.Get(), PKEY_AppUserModel_RelaunchIconResource, std::wstring(icon) + L",0");
+        HasText(store.Get(), PKEY_AppUserModel_RelaunchIconResource, icon);
     PROPVARIANT id;
     PropVariantInit(&id);
     HRESULT result = store->GetValue(PKEY_AppUserModel_ID, &id);
@@ -190,16 +227,17 @@ extern "C" int Headroom_TestTaskbarIcons(const wchar_t* directory, const wchar_t
     if (!window) return 4;
     int failure = 0;
     for (auto icon : { secondIcon, firstIcon, secondIcon }) {
-        HRESULT result = Headroom_SetTaskbarIcon(window, executable, icon, directory);
+        HRESULT result = Headroom_SetTaskbarIcon(window, executable, icon, directory, 1);
         if (FAILED(result)) { failure = result; break; }
         if (!CheckTestShortcut(matching.c_str(), executable, icon, directory, true)) { failure = 6; break; }
         if (!CheckTestShortcut(other.c_str(), otherExecutable.c_str(), firstIcon, directory, false)) { failure = 7; break; }
         ComPtr<IPropertyStore> store;
         if (FAILED(SHGetPropertyStoreForWindow(window, IID_PPV_ARGS(&store))) ||
             !HasText(store.Get(), PKEY_AppUserModel_ID, AppId) ||
-            !HasText(store.Get(), PKEY_AppUserModel_RelaunchIconResource, std::wstring(icon) + L",0") ||
+            !HasText(store.Get(), PKEY_AppUserModel_RelaunchIconResource, icon) ||
             !HasText(store.Get(), PKEY_AppUserModel_RelaunchDisplayNameResource, L"Headroom") ||
             !HasText(store.Get(), PKEY_AppUserModel_RelaunchCommand, L"\"" + std::wstring(executable) + L"\"")) { failure = 8; break; }
+        if (IsWindowVisible(window)) { failure = 9; break; }
     }
     Headroom_ClearTaskbarIcon(window);
     DestroyWindow(window);

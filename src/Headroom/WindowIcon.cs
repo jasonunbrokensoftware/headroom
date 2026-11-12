@@ -17,7 +17,7 @@ internal sealed partial class WindowIcon(nint window) : IDisposable
         // Migrate this EXE's existing pin before its first window is shown.
         // A locked/read-only pin must not prevent the app from opening. A theme
         // change reports synchronization failures through the appearance API.
-        _ = NativeDesktop.SetTaskbarIcon(0, Environment.ProcessPath!, icon, PinnedDirectory);
+        _ = NativeDesktop.SetTaskbarIcon(0, Environment.ProcessPath!, icon, PinnedDirectory, 0);
     }
     public void Set(string path, bool requireTaskbarUpdate = true)
     {
@@ -30,7 +30,7 @@ internal sealed partial class WindowIcon(nint window) : IDisposable
         SendMessageW(window, 0x80, 1, nextLarge); // ICON_BIG (taskbar / Alt+Tab)
         Release(small); Release(large);
         small = nextSmall; large = nextLarge;
-        int result = NativeDesktop.SetTaskbarIcon(window, Environment.ProcessPath!, path, PinnedDirectory);
+        int result = NativeDesktop.SetTaskbarIcon(window, Environment.ProcessPath!, path, PinnedDirectory, requireTaskbarUpdate ? 1 : 0);
         if (requireTaskbarUpdate) Marshal.ThrowExceptionForHR(result);
     }
     internal static nint Load(string path, int size)

@@ -86,7 +86,7 @@ updates the icon and stable Headroom.Desktop identity of existing .lnk pins whos
 resolved target matches this executable. It preserves launch arguments and other
 link details, leaves unrelated targets alone, and sends a targeted shell change
 notification. The window publishes its themed relaunch icon and sets its stable
-AppUserModelID last to request a taskbar refresh. Existing pins are synchronized
+AppUserModelID last. Existing pins are synchronized
 before showing the first window; new pins receive the same themed metadata.
 Window properties are cleared during destruction. No re-pinning, Explorer restart,
 global icon-cache reset, or theme-specific change of application identity is used.
@@ -97,6 +97,27 @@ It creates no visible window and does not modify real taskbar pins.
 https://learn.microsoft.com/en-us/windows/win32/properties/props-system-appusermodel-relaunchiconresource
 https://learn.microsoft.com/en-us/windows/win32/properties/props-system-appusermodel-id
 https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shgetpropertystoreforwindow
+
+Live follow-up established that the window's actual icon pixels and relaunch
+metadata already reflected the selected theme, while Explorer's button retained
+an older image. Read-back tests alone cannot verify the taskbar's visible result.
+Theme changes now re-register an unpinned button through ITaskbarList. A pinned
+button additionally needs a window visibility cycle to rebuild Explorer's cached
+image; the existing HWND, WebView, position, maximized/minimized state, and focus
+are retained. Startup and hidden/tray-only windows skip this refresh. No Explorer
+restart, global cache clear, new app identity, or unpin/re-pin operation is used.
+
+The relaunch icon property now uses the plain .ico path. A comma/index suffix can
+be interpreted as part of the filename by the modern taskbar, yielding the generic
+document icon. IShellLink.SetIconLocation still receives index zero separately.
+The native regression verifies plain paths, repeated updates, preserved shortcuts,
+and that message-only windows remain hidden. Visible button refresh needs manual
+verification in the user's pinned/unpinned configuration.
+Related implementation reports and API reference:
+https://github.com/microsoft/WindowsAppSDK/issues/2730
+https://github.com/Syngnat/GoNavi/blob/main/internal/app/application_icon_taskbar_recreate_windows.go
+https://github.com/Syngnat/GoNavi/blob/main/internal/app/application_icon_taskbar_windows.go
+https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-itaskbarlist
 
 Frame implementation references:
 https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute

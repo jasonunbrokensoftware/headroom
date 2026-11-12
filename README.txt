@@ -28,6 +28,8 @@ the EXE and cached under data/icons; no extra files are needed for distribution.
 Windows taskbar pins targeting this EXE are synchronized with the theme, including
 pins created before themed icons were supported. Their launch arguments and
 position are preserved. The app does not pin/unpin itself or restart Explorer.
+Theme changes also refresh the running taskbar button. With a pinned button,
+Windows may briefly redraw the window; its position and maximized state are kept.
 
 The executable is compiled with .NET 10 Native AOT for Windows x64. It embeds
 the Vue production library and all UI assets. Photino.NET hosts the interface
