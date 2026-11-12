@@ -16,7 +16,9 @@ Windows native title bar and border are hidden. Windows 11 handles outer corner
 clipping; maximized and snapped windows follow the system's square corners.
 
 The color-theme button offers Ember (copper and sand), Orchard (olive and citrus),
-Lagoon (sea glass and coral), and Rosewood (rose and brass). All four are dark
+Lagoon (sea glass and coral), Rosewood (rose and brass), Classic (the original
+slate, periwinkle, and mint), and Graphite (neutral black, gray, and silver).
+All six are dark
 themes with coordinated surfaces, controls, and chart colors. Your selection is
 saved automatically in settings.json beside the EXE and applied before the first
 page paint on the next launch. Ember is the default.

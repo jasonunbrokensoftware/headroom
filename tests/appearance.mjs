@@ -50,7 +50,7 @@ try {
   assert.deepEqual(await (await api()).json(), { theme: 'ember' });
   await pageTheme('ember');
   assert.ok((await (await fetch(origin + '/appearance.js')).text()).includes('resolveTheme'));
-  for (const theme of ['orchard', 'lagoon', 'rosewood', 'ember']) {
+  for (const theme of ['orchard', 'lagoon', 'rosewood', 'classic', 'graphite', 'ember']) {
     const result = await api({ theme });
     assert.equal(result.status, 200);
     assert.deepEqual(await result.json(), { theme });

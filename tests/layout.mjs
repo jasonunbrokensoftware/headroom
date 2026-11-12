@@ -148,7 +148,7 @@ try {
     await overview();
   }
   await page.setViewportSize({width:1200,height:780});
-  const themeNames=['Ember','Orchard','Lagoon','Rosewood'];
+  const themeNames=['Ember','Orchard','Lagoon','Classic','Graphite','Rosewood'];
   const themeBackgrounds=new Set();
   for(const name of themeNames){
     const before=await page.evaluate(()=>window.bridgeMessages.length);
@@ -173,6 +173,7 @@ try {
     assert.ok(colors.chart.every(ratio=>ratio>=3),`${name} graph colors contrast with their surface`);
     for(const width of [1200,680,520]){
       await page.setViewportSize({width,height:480});
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
       const box=await page.locator('.theme-menu').boundingBox();
       assert.ok(box.x>=11 && box.x+box.width<=width-11 && box.y>=0 && box.y+box.height<=469,`${name} chooser fits ${width}x480`);
       assert.equal(await page.locator('.content').evaluate(e=>e.scrollWidth>e.clientWidth),false);
@@ -182,7 +183,7 @@ try {
     assert.ok(await page.getByRole('button',{name:'Color theme',exact:true}).evaluate(e=>e===document.activeElement));
     await page.setViewportSize({width:1200,height:780});
   }
-  assert.equal(themeBackgrounds.size,4,'Themes change the full surface palette, not just the accent');
+  assert.equal(themeBackgrounds.size,themeNames.length,'Themes change the full surface palette, not just the accent');
   await page.reload({waitUntil:'domcontentloaded'});
   await page.locator('.runway-value').waitFor();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'rosewood','Saved theme is present on initial HTML after reload');
@@ -198,7 +199,7 @@ try {
   assert.equal(await page.locator('.resize-edge').count(),0);
   await page.evaluate(()=>window.deliverNative('window:restored'));
   assert.equal(await page.locator('.resize-edge').count(),8);
-  console.log('PASS four full palettes, text/chart contrast, portable-theme reload, save failure, bounded chooser, and window gestures');
+  console.log('PASS six full palettes, text/chart contrast, portable-theme reload, save failure, bounded chooser, and window gestures');
   await page.locator('.reset-details summary').last().click();
   assert.equal(await page.locator('.reset-details[open] .reset').count(),2);
   await page.locator('.reset-details summary').last().click();

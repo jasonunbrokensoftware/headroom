@@ -24,10 +24,12 @@ columns, and move destructive actions into account menus. Keep information
 about calculations available in disclosures. Activity gets dedicated space
 for scenario controls and graphs without crowding everyday monitoring.
 
-Visual direction: four complete dark palettes, with Ember as the default.
+Visual direction: six complete dark palettes, with Ember as the default.
 Ember uses warm charcoal, copper, and sand; Orchard uses olive and citrus;
 Lagoon pairs deep teal and sea glass with coral; Rosewood pairs wine and rose
-with brass. Semantic color roles cover surfaces, text, controls, charts, and
+with brass. Classic restores the original slate/periwinkle/mint palette, while
+Graphite uses neutral black/gray surfaces and silver accents and chart lines.
+Semantic color roles cover surfaces, text, controls, charts, and
 loading states. Tabular numbers, one spacing scale, visible keyboard focus,
 reduced-motion support, and compact loading/empty/error states are shared.
 Account colors stay consistent across filtering within each theme.
@@ -58,7 +60,7 @@ the portable settings file, not browser storage tied to a random loopback port.
 Initial HTML includes the selected palette to avoid a flash of the wrong theme.
 Theme and startup preference updates preserve each other under a shared lock.
 
-The headless audit covers all seven widths, all four themes, 4.5:1 normal-text
+The headless audit covers all seven widths, all six themes, 4.5:1 normal-text
 contrast, 3:1 chart contrast, bounded menus, overlapping controls, unwanted
 header scrollbars, save-failure recovery, and a reload in the selected theme.
 An isolated EXE test covers API validation/authentication, persistence across

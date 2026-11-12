@@ -7,7 +7,7 @@ public record AppearancePreferences(string Theme);
 
 internal static class Appearance
 {
-    public static bool IsTheme(string? theme) => theme is "ember" or "orchard" or "lagoon" or "rosewood";
+    public static bool IsTheme(string? theme) => theme is "ember" or "orchard" or "lagoon" or "rosewood" or "classic" or "graphite";
     public static string Normalize(string? theme) => IsTheme(theme) ? theme! : "ember";
 }
 
