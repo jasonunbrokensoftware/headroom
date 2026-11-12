@@ -78,7 +78,12 @@ The Windows adapter supplies a full-size, DPI-scaled HICON to both the large
 and small window-icon slots. Headroom has no native caption requiring a tiny
 source. At 150% scaling this supplies 48px to both slots, replacing the 24px
 small-slot image that matched the reported quarter-area unpinned taskbar icon.
-One owned handle serves both slots and is released once after replacement.
+Each slot retains its own independently loaded handle. The original update
+sequence (small first, large last) is preserved; only the image dimensions change.
+An intermediate shared-handle/reversed-order implementation was followed by a
+report of stale unpinned icons after relocation, despite correct live HWND pixels.
+That unrelated change was removed to isolate sizing from update behavior. Native
+read-back tests do not prove that Explorer repaints its visible taskbar button.
 The tray keeps its own independent handle and size. A message-only HWND test
 queries all three WM_GETICON variants across 100%-400% scaling and repeated
 theme changes. Visible taskbar rendering still requires manual verification.

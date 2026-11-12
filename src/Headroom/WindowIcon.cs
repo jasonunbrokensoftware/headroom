@@ -9,7 +9,7 @@ namespace Headroom;
 [SupportedOSPlatform("windows")]
 internal sealed partial class WindowIcon(nint window) : IDisposable
 {
-    private nint icon;
+    private nint small, large;
     private static readonly string PinnedDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "Microsoft", "Internet Explorer", "Quick Launch", "User Pinned", "TaskBar");
     private static int UpdateTaskbar(nint handle, string icon) => NativeDesktop.SetTaskbarIcon(handle, Environment.ProcessPath!, icon,
@@ -35,11 +35,17 @@ internal sealed partial class WindowIcon(nint window) : IDisposable
         // image. This window has a custom Vue title bar, so provide the full-size
         // source for both slots; Windows scales it down where appropriate.
         // https://learn.microsoft.com/windows/win32/winmsg/wm-seticon
-        nint next = Load(path, GetSystemMetricsForDpi(11, dpi)); // SM_CXICON
-        SendMessageW(window, 0x80, 1, next); // ICON_BIG: publish the full-size icon first.
-        SendMessageW(window, 0x80, 0, next); // ICON_SMALL / ICON_SMALL2 use the same full-size source.
-        Release(icon); // One owned handle, referenced by both slots.
-        icon = next;
+        int size = GetSystemMetricsForDpi(11, dpi); // SM_CXICON
+        nint nextSmall = Load(path, size);
+        nint nextLarge;
+        try { nextLarge = Load(path, size); }
+        catch { Release(nextSmall); throw; }
+        // Preserve the original small-then-large update sequence and separate
+        // handle ownership. The sizing correction changes only the source size.
+        SendMessageW(window, 0x80, 0, nextSmall); // ICON_SMALL / ICON_SMALL2
+        SendMessageW(window, 0x80, 1, nextLarge); // ICON_BIG
+        Release(small); Release(large);
+        small = nextSmall; large = nextLarge;
     }
     internal static nint Load(string path, int size)
     {
@@ -47,7 +53,7 @@ internal sealed partial class WindowIcon(nint window) : IDisposable
         return icon != 0 ? icon : throw new Win32Exception(Marshal.GetLastPInvokeError(), "Could not load the themed icon.");
     }
     internal static void Release(nint icon) { if (icon != 0) DestroyIcon(icon); }
-    public void Dispose() { Release(icon); icon = 0; }
+    public void Dispose() { Release(small); Release(large); small = large = 0; }
     [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
     private static partial nint LoadImageW(nint instance, string path, uint type, int width, int height, uint flags);
     [LibraryImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static partial bool DestroyIcon(nint icon);

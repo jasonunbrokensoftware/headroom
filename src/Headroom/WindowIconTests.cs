@@ -23,10 +23,12 @@ internal static partial class WindowIconTests
                 {
                     icons.SetWindowIcons(path, dpi);
                     nint big = SendMessageW(window, 0x7f, 1, (nint)dpi); // WM_GETICON
+                    nint small = SendMessageW(window, 0x7f, 0, (nint)dpi);
+                    sizesMatch &= big != small; // Independent owned handles for the two slots.
                     foreach (int slot in new[] { 0, 1, 2 })
                     {
                         nint handle = SendMessageW(window, 0x7f, slot, (nint)dpi);
-                        sizesMatch &= handle != 0 && handle == big && Size(handle) == (expected, expected);
+                        sizesMatch &= handle != 0 && handle == (slot == 1 ? big : small) && Size(handle) == (expected, expected);
                     }
                 }
                 check(sizesMatch, $"All window-icon slots retain a full {expected}px source at {dpi} DPI across theme changes");
