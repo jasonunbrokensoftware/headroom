@@ -8,7 +8,7 @@
     <Product>Headroom</Product>
     <Title>Headroom</Title>
     <Description>All your AI usage. One place.</Description>
-    <ApplicationIcon>Assets/headroom.ico</ApplicationIcon>
+    <ApplicationIcon>Assets/headroom-ember.ico</ApplicationIcon>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

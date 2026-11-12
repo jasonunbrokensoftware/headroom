@@ -23,6 +23,32 @@ function position(rva) {
   }
   throw new Error('Invalid PE section');
 }
+// Check the icon resources in the actual published EXE, not just its project
+// setting. Every frame must be the Ember artwork, including Explorer's sizes.
+const resourceRoot = position(pe.readUInt32LE(opt + 112 + 2 * 8));
+function resourceEntry(directory, id) {
+  const entries = pe.readUInt16LE(directory + 12) + pe.readUInt16LE(directory + 14);
+  for (let i = 0; i < entries; i++) {
+    const entry = directory + 16 + i * 8;
+    if (id === undefined || pe.readUInt32LE(entry) === id)
+      return resourceRoot + (pe.readUInt32LE(entry + 4) & 0x7fffffff);
+  }
+  throw new Error('Missing icon resource ' + id);
+}
+function resourceData(type, id) {
+  const data = resourceEntry(resourceEntry(resourceEntry(resourceRoot, type), id));
+  const start = position(pe.readUInt32LE(data));
+  return pe.subarray(start, start + pe.readUInt32LE(data + 4));
+}
+const ember = await readFile(path.resolve('src/Headroom/Assets/headroom-ember.ico'));
+const iconGroup = resourceData(14); // RT_GROUP_ICON
+assert.equal(iconGroup.readUInt16LE(4), ember.readUInt16LE(4), 'EXE retains every Ember icon size');
+for (let i = 0; i < ember.readUInt16LE(4); i++) {
+  const frame = 6 + i * 16, groupFrame = 6 + i * 14;
+  const start = ember.readUInt32LE(frame + 12), length = ember.readUInt32LE(frame + 8);
+  assert.deepEqual(resourceData(3, iconGroup.readUInt16LE(groupFrame + 12)), ember.subarray(start, start + length),
+    'EXE Ember artwork at size ' + (ember[frame] || 256));
+}
 const imports = [];
 for (let p = position(pe.readUInt32LE(opt + 112 + 8)); pe.readUInt32LE(p + 12); p += 20) {
   const name = position(pe.readUInt32LE(p + 12));
