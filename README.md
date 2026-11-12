@@ -14,6 +14,7 @@ Windows x64 is the current supported platform. The shared backend and Vue interf
 - Six dark color themes, an integrated custom header, loading indicators, and responsive charts.
 - The interface icon follows the theme; the EXE, taskbar, and tray keep the neutral Graphite icon.
 - Windows tray monitoring and optional Start with Windows.
+- About Headroom in the interface footer and tray menu, with version/build details, the MIT license, and GitHub source links.
 - A single Windows EXE with settings and account data stored beside it.
 
 Headroom reads account status through the installed Codex CLI. It does not send model prompts or redeem resets. It is an independent project, not an official OpenAI application.

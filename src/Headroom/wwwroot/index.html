@@ -111,7 +111,7 @@
       </template>
     </section>
 
-    <footer v-if="loaded" class="footnote"><span>Local times · Refreshes every minute</span><span>Redeem resets in Codex<span class="footer-divider">·</span>{{ trayAvailable ? 'Monitoring continues in the tray' : 'Closing stops monitoring' }}</span></footer>
+    <footer class="footnote"><span v-if="loaded">Local times · Refreshes every minute</span><span v-if="loaded">Redeem resets in Codex<span class="footer-divider">·</span>{{ trayAvailable ? 'Monitoring continues in the tray' : 'Closing stops monitoring' }}</span><button id="about-button" class="text-button" aria-haspopup="dialog" @click="showAbout">About Headroom</button></footer>
   </div></div>
     <section v-if="themeOpen" id="theme-menu" class="theme-menu" role="dialog" aria-label="Color theme" data-no-drag @click.stop :style="{left:themePosition.left+'px',top:themePosition.top+'px',maxHeight:'calc(100vh - '+themePosition.top+'px - 12px)'}">
     <header><h2>Color theme</h2><span>Dark palettes</span></header>
@@ -119,6 +119,20 @@
     <p class="theme-save" :class="{failed:themeError}" role="status">{{ themeSaving ? 'Saving theme…' : themeError || 'Your choice is saved automatically.' }}</p>
   </section>
   <div class="dialog-backdrop" v-if="login"><section class="login-dialog" role="dialog" aria-modal="true" aria-labelledby="login-heading"><h2 id="login-heading">Complete sign-in in your browser</h2><p>Choose your account and workspace. To use a different browser profile or a private window, copy the link below.</p><p v-if="login.code" class="code">{{ login.code }}</p><label class="muted" for="login-url">Sign-in link</label><input id="login-url" class="login-url" readonly :value="login.url" @focus="$event.target.select()"><div class="tools"><button class="primary" @click="openLogin">Open sign-in page</button><button @click="copyLink">Copy link</button><button @click="cancelLogin">Cancel</button></div><p class="muted">{{ copyStatus || 'Your email and workspace will appear when sign-in finishes.' }}</p></section></div>
+  <dialog ref="aboutDialog" class="about-dialog" aria-labelledby="about-heading" @keydown="aboutKeydown">
+    <header class="about-heading"><img :src="iconUrl" alt="" width="44" height="44"><div><h2 id="about-heading">About Headroom</h2><p>A portable dashboard for your AI usage.</p></div></header>
+    <p v-if="aboutLoading" class="loading-label" role="status"><span class="spinner" aria-hidden="true"></span>Loading app details…</p>
+    <div v-else-if="aboutError" class="about-error" role="alert"><p>{{ aboutError }}</p><button class="text-button" @click="loadAbout">Retry</button></div>
+    <template v-else-if="about">
+      <dl class="about-meta"><div><dt>Version</dt><dd>{{ about.version }}</dd></div><div v-if="about.build"><dt>Build</dt><dd><code :title="about.build">{{ about.build.slice(0,12) }}</code></dd></div><div><dt>License</dt><dd>{{ about.license }} · Open source</dd></div></dl>
+      <p class="about-copyright">{{ about.copyright }}</p>
+      <div class="about-links"><a :href="about.repositoryUrl" target="_blank" rel="noopener noreferrer" @click.prevent="openAboutLink('source')"><strong>Source code</strong><span>GitHub <i aria-hidden="true">↗</i></span></a><a :href="about.licenseUrl" target="_blank" rel="noopener noreferrer" @click.prevent="openAboutLink('license')"><strong>MIT License</strong><span>GitHub <i aria-hidden="true">↗</i></span></a></div>
+      <details class="about-license"><summary>Read the MIT license</summary><pre>{{ about.licenseText }}</pre></details>
+      <p class="about-notices">Headroom’s original code and artwork are MIT licensed. <a :href="about.noticesUrl" target="_blank" rel="noopener noreferrer" @click.prevent="openAboutLink('notices')">Third-party notices</a></p>
+    </template>
+    <div v-if="aboutLinkError" class="about-error" role="alert"><p>{{ aboutLinkError }}</p><input class="about-link-url" aria-label="Link address" readonly :value="aboutLinkUrl" @focus="$event.target.select()"></div>
+    <footer><button id="about-close" class="primary" autofocus @click="closeAbout">Close</button></footer>
+  </dialog>
   <template v-if="!maximized"><div v-for="edge in ['n','ne','e','se','s','sw','w','nw']" :key="edge" :class="['resize-edge', edge]" aria-hidden="true" @mousedown.prevent="resizeDown($event, edge)"></div></template>
 
 </div><script type="module" src="/app.js"></script>

@@ -127,6 +127,12 @@ app.MapGet("/headroom-{theme}.svg", (string theme) =>
     using var buffer = new MemoryStream(); stream.CopyTo(buffer);
     return Results.Bytes(buffer.ToArray(), "image/svg+xml");
 });
+app.MapGet("/api/about", () => Results.Json(AppAbout.Info, AppJson.Default.AboutView));
+app.MapPost("/api/about/open/{destination}", (string destination) =>
+{
+    Browser.Open(AppAbout.Link(destination));
+    return Results.NoContent();
+});
 app.MapGet("/api/appearance", () => Results.Json(new AppearancePreferences(Appearance.Normalize(PortableStorage.Settings().Theme)), AppJson.Default.AppearancePreferences));
 app.MapPost("/api/appearance", (AppearancePreferences input) =>
 {

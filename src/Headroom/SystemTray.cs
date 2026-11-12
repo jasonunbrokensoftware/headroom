@@ -14,14 +14,14 @@ internal sealed unsafe partial class SystemTray : IDisposable
     private static readonly ConcurrentDictionary<nint, SystemTray> Instances = new();
     private readonly nint window;
     private nint icon;
-    private readonly Action refresh, quit;
+    private readonly Action refresh, quit, about;
     private readonly uint taskbarCreated;
     private bool version4, menuPending;
     internal static int NativeDataSize => sizeof(NotifyIconData);
     public bool Available { get; private set; }
-    public SystemTray(nint window, string iconFile, Action refresh, Action quit)
+    public SystemTray(nint window, string iconFile, Action refresh, Action quit, Action about)
     {
-        this.window = window; this.refresh = refresh; this.quit = quit;
+        this.window = window; this.refresh = refresh; this.quit = quit; this.about = about;
         icon = WindowIcon.Load(iconFile, 32);
         taskbarCreated = RegisterWindowMessageW("TaskbarCreated");
         Instances[window] = this;
@@ -65,6 +65,7 @@ internal sealed unsafe partial class SystemTray : IDisposable
             AppendMenuW(menu, 0, 2, "Refresh all accounts");
             AppendMenuW(menu, PortableStorage.Settings().StartWithWindows ? 8u : 0u, 3, "Start with Windows");
             AppendMenuW(menu, 0x800, 0, null);
+            AppendMenuW(menu, 0, 5, "About Headroom");
             AppendMenuW(menu, 0, 4, "Quit Headroom");
             GetCursorPos(out var point);
             SetForegroundWindow(window);
@@ -88,6 +89,7 @@ internal sealed unsafe partial class SystemTray : IDisposable
                 }
                 break;
             case 4: quit(); return;
+            case 5: Show(); about(); return;
         }
         var data = Data();
         Shell_NotifyIconW(3, ref data); // NIM_SETFOCUS: return focus after the tray menu closes.

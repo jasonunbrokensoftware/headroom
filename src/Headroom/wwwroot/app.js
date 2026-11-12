@@ -13,6 +13,7 @@ createApp({
     activeView: 'overview', accountQuery: '', accountMenu: null, accountMenuUp: false,
     themes, theme: resolveTheme(document.documentElement.dataset.theme).id, themeOpen: false,
     themeSaving: false, themeError: '', themePosition: {left:0,top:0},
+    about: null, aboutLoading: false, aboutError: '', aboutLinkError: '', aboutLinkUrl: '',
     histories: [], historyLoaded: false, historyBusy: false, historyError: '', historyRevision: '', historyAt: Date.now(),
     historyAccount: 'all', historyDays: 30, historyMetric: 'remaining', paceMultiplier: 1, includeResets: true }),
   computed: { overview() { return summarizeUsage(this.accounts, this.now); },
@@ -97,6 +98,35 @@ createApp({
       catch { this.applyTheme(previous);this.themeError='Could not save the theme. Please try again.'; }
       finally { this.themeSaving=false; }
     },
+    showAbout() {
+      this.closeThemeMenu(); this.closeAccountMenu(); this.aboutLinkError='';
+      if(!this.$refs.aboutDialog.open)this.$refs.aboutDialog.showModal();
+      if(!this.about)this.loadAbout();
+    },
+    async loadAbout() {
+      if(this.aboutLoading)return;
+      this.aboutLoading=true;this.aboutError='';
+      try { this.about=await this.api('/about'); }
+      catch { this.aboutError='App details could not be loaded. Please try again.'; }
+      finally { this.aboutLoading=false; }
+    },
+    closeAbout() { this.$refs.aboutDialog.close(); },
+    aboutKeydown(event) {
+      if(event.key!=='Tab')return;
+      const items=[...this.$refs.aboutDialog.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),summary,[tabindex="0"]')].filter(el=>el.getClientRects().length);
+      const first=items[0],last=items.at(-1);
+      if(first && (event.shiftKey ? document.activeElement===first : document.activeElement===last)){
+        event.preventDefault();(event.shiftKey?last:first).focus();
+      }
+    },
+    async openAboutLink(destination) {
+      this.aboutLinkError='';
+      try { await this.api('/about/open/'+destination,'POST'); }
+      catch {
+        this.aboutLinkError='Could not open your browser. Copy this address and open it manually.';
+        this.aboutLinkUrl=({source:this.about.repositoryUrl,license:this.about.licenseUrl,notices:this.about.noticesUrl})[destination];
+      }
+    },
     async action(fn) { this.error = ''; try { await fn(); await this.load(); } catch (e) { this.error = e.message; } },
     async add() { this.adding = true; await this.action(async () => { this.login = await this.api('/accounts/login', 'POST', { deviceCode: false }); this.copyStatus = ''; await this.api('/login/open', 'POST'); }); this.adding = false; },
     async remove(account) { this.closeAccountMenu(); if (confirm(`Remove ${account.name}? This signs out its dashboard connection.`)) await this.action(() => this.api('/accounts/' + account.id, 'DELETE')); },
@@ -138,5 +168,5 @@ createApp({
       return (days ? days+'d ' : '')+(hours ? hours+'h ' : '')+(rest || (!days&&!hours) ? rest+'m' : '');
     }
   },
-  mounted() { document.getElementById('boot-status')?.remove(); window.external?.receiveMessage?.(message => { if (message === 'window:maximized') this.maximized = true; else if (message === 'window:restored') this.maximized = false; else if (message === 'window:tray') this.trayAvailable = true; else if (message === 'window:no-tray') this.trayAvailable = false; }); this.windowAction('ready'); this.load(); this.poll = setInterval(() => this.load(), 3000); this.clock = setInterval(() => this.now = Date.now(), 1000); document.addEventListener('click',()=>{this.closeAccountMenu();this.closeThemeMenu();}); document.addEventListener('keydown',event=>{if(event.key==='Escape'){if(this.themeOpen)this.closeThemeMenu(true);else this.closeAccountMenu(true);}});window.addEventListener('resize',()=>{if(this.themeOpen)this.positionThemeMenu();}); document.addEventListener('visibilitychange',()=>{if(!document.hidden){this.load();this.loadHistory();}}); }
+  mounted() { document.getElementById('boot-status')?.remove(); window.external?.receiveMessage?.(message => { if (message === 'window:maximized') this.maximized = true; else if (message === 'window:restored') this.maximized = false; else if (message === 'window:tray') this.trayAvailable = true; else if (message === 'window:no-tray') this.trayAvailable = false; else if (message === 'window:about') this.showAbout(); }); this.windowAction('ready'); this.load(); this.poll = setInterval(() => this.load(), 3000); this.clock = setInterval(() => this.now = Date.now(), 1000); document.addEventListener('click',()=>{this.closeAccountMenu();this.closeThemeMenu();}); document.addEventListener('keydown',event=>{if(event.key==='Escape'){if(this.themeOpen)this.closeThemeMenu(true);else this.closeAccountMenu(true);}});window.addEventListener('resize',()=>{if(this.themeOpen)this.positionThemeMenu();}); document.addEventListener('visibilitychange',()=>{if(!document.hidden){this.load();this.loadHistory();}}); }
 }).mount('#app');

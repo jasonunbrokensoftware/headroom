@@ -29,6 +29,12 @@ and position. Icon assets are embedded and cached under data/icons; no extra fil
 are needed for distribution. Theme changes do not update any OS icons or redraw
 the native window. The app does not pin/unpin itself or restart Explorer.
 
+About Headroom is available in the interface footer and the system tray's
+right-click menu. It shows the running app's version and build identifier,
+Copyright (c) 2026 Jason Carr, and the full MIT license (available offline).
+Source-code, license, and third-party notice links open in your default browser.
+Choosing About from the tray restores the window and opens the same dialog.
+
 The executable is compiled with .NET 10 Native AOT for Windows x64. It embeds
 the Vue production library and all UI assets. Photino.NET hosts the interface
 using WebView2 on Windows and WebKitGTK on Linux. Windows builds statically link

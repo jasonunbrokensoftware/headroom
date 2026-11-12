@@ -15,6 +15,7 @@ internal sealed class DesktopWindow
     private SystemTray? tray;
     private WindowIcon? windowIcon;
     private bool hideOnReady;
+    private bool aboutRequested;
 
     // Called on the application's original STA thread, also the GTK main thread on Linux.
     public void Run(DesktopStart start, Action stop)
@@ -56,7 +57,7 @@ internal sealed class DesktopWindow
                     windowIcon = new(window!.WindowHandle);
                     windowIcon.Set(iconFile, requireTaskbarUpdate: false);
                     tray = new(window!.WindowHandle, iconFile,
-                        () => _ = Task.Run(async () => { try { await start.Refresh(); } catch { } }), RequestClose);
+                        () => _ = Task.Run(async () => { try { await start.Refresh(); } catch { } }), RequestClose, ShowAbout);
                 }
                 if (closeRequested) window!.Close();
             })
@@ -94,6 +95,18 @@ internal sealed class DesktopWindow
         });
     }
 
+    // The tray callback runs on the window thread. Queue early requests until Vue is ready.
+    private void ShowAbout()
+    {
+        hideOnReady = false;
+        aboutRequested = true;
+        if (webReady && !closing)
+        {
+            window!.SendWebMessage("window:about");
+            aboutRequested = false;
+        }
+    }
+
     private void SendState()
     {
         if (created && webReady && !closing)
@@ -114,6 +127,7 @@ internal sealed class DesktopWindow
             {
                 case "ready":
                     webReady = true; SendState();
+                    if (aboutRequested) ShowAbout();
                     if (hideOnReady && OperatingSystem.IsWindows()) { tray?.Hide(); hideOnReady = false; }
                     break;
                 case "minimize": window!.SetMinimized(true); break;

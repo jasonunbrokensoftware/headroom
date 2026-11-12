@@ -7,6 +7,7 @@
     <RootNamespace>Headroom</RootNamespace>
     <Product>Headroom</Product>
     <Title>Headroom</Title>
+    <Version>1.0.0</Version>
     <Copyright>Copyright (c) 2026 Jason Carr</Copyright>
     <Description>All your AI usage. One place.</Description>
     <ApplicationIcon>Assets/headroom-graphite.ico</ApplicationIcon>
@@ -29,6 +30,7 @@
     <EmbeddedResource Include="Assets/headroom.png" LogicalName="brand.headroom.png" />
     <EmbeddedResource Include="Assets/headroom-*.ico;Assets/headroom-*.png" LogicalName="brand.%(Filename)%(Extension)" />
     <EmbeddedResource Include="BouncyCastle-LICENSE.txt" LogicalName="licenses/BouncyCastle.txt" />
+    <EmbeddedResource Include="../../LICENSE" LogicalName="licenses/Headroom.txt" />
   </ItemGroup>
   <ItemGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" GeneratePathProperty="true" ExcludeAssets="all" PrivateAssets="all" />

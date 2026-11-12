@@ -51,6 +51,23 @@ async function pageTheme(theme) {
 }
 try {
   await start();
+  const aboutResponse = await fetch(origin + '/api/about', {headers:{'X-Session':key}});
+  assert.equal(aboutResponse.status,200);
+  const about = await aboutResponse.json();
+  const project = await readFile('src/Headroom/Headroom.csproj','utf8');
+  assert.equal(about.version,project.match(/<Version>([^<]+)<\/Version>/)[1]);
+  assert.ok(about.build === null || /^[0-9a-f]{40}$/i.test(about.build),'Build identity comes from the compiled assembly');
+  assert.equal(about.copyright,'Copyright (c) 2026 Jason Carr');
+  assert.equal(about.license,'MIT');
+  assert.equal(about.licenseText,await readFile('LICENSE','utf8'),'The full license is embedded in the EXE');
+  assert.equal(about.repositoryUrl,'https://github.com/jasonunbrokensoftware/headroom');
+  assert.equal(about.licenseUrl,about.repositoryUrl+'/blob/main/LICENSE');
+  assert.equal(about.noticesUrl,about.repositoryUrl+'/blob/main/THIRD_PARTY_NOTICES.md');
+  assert.equal((await fetch(origin+'/api/about')).status,401);
+  assert.equal((await fetch(origin+'/api/about/open/source',{method:'POST'})).status,401);
+  assert.equal((await fetch(origin+'/api/about/open/source',{method:'POST',headers:{'X-Session':key,Origin:'https://example.org'}})).status,403);
+  assert.equal((await fetch(origin+'/api/about/open/untrusted',{method:'POST',headers:{'X-Session':key}})).status,400,'Only fixed project links can open a browser');
+  console.log('PASS compiled About metadata, exact embedded MIT license, and restricted external links');
   assert.equal((await fetch(origin + '/api/appearance')).status, 401);
   assert.equal((await api({ theme: 'lagoon' }, { Origin: 'https://example.org' })).status, 403);
   assert.deepEqual(await (await api()).json(), { theme: 'ember' });

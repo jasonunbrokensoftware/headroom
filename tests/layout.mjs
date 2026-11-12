@@ -18,8 +18,13 @@ const fixture = [account('one','pro',0), account('two','prolite',47,1), account(
 fixture[2].email = 'jasondavidcarr@unbrokensoftware.com'; // Width regression fixture only; no credentials are used.
 let state = {accounts:fixture,login:null}, hold = true, held = [], observed = true, historyFailure = false;
 let savedTheme='ember', themeFailure=false;
+let aboutFailure=false, aboutLinkFailure=false;
+const aboutRequests=[];
+const aboutFixture={version:'1.0.0',build:'1234567890abcdef1234567890abcdef12345678',copyright:'Copyright (c) 2026 Jason Carr',license:'MIT',licenseText:await readFile('LICENSE','utf8'),repositoryUrl:'https://github.com/jasonunbrokensoftware/headroom',licenseUrl:'https://github.com/jasonunbrokensoftware/headroom/blob/main/LICENSE',noticesUrl:'https://github.com/jasonunbrokensoftware/headroom/blob/main/THIRD_PARTY_NOTICES.md'};
 const mime = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml'};
 const server = createServer(async (req,res) => {
+  if(req.url==='/api/about'){res.writeHead(aboutFailure?503:200,{'Content-Type':'application/json'});res.end(JSON.stringify(aboutFailure?{text:'Test About failure'}:aboutFixture));return;}
+  if(req.url.startsWith('/api/about/open/')){aboutRequests.push({path:req.url,method:req.method});res.writeHead(aboutLinkFailure?503:204,{'Content-Type':'application/json'});res.end(aboutLinkFailure?JSON.stringify({text:'Test browser failure'}):undefined);return;}
   if (req.url === '/api/accounts') {
     const send = () => { res.writeHead(state ? 200 : 503, {'Content-Type':'application/json'}); res.end(JSON.stringify(state || {text:'Test offline'})); };
     if (hold) held.push(send); else send();
@@ -74,6 +79,47 @@ try {
   assert.ok(await page.locator('.startup .skeleton').count()>0);
   assert.ok(await page.getByRole('button',{name:'Sign in to another account',exact:true}).isDisabled());
   assert.equal(await page.getByRole('button',{name:'Hide to tray',exact:true}).count(),1);
+  // About is usable before accounts load and through the same native tray message.
+  aboutFailure=true;
+  await page.getByRole('button',{name:'About Headroom',exact:true}).click();
+  const aboutDialog=page.getByRole('dialog',{name:'About Headroom',exact:true});
+  await aboutDialog.getByRole('alert').waitFor();
+  assert.equal(await aboutDialog.locator('.about-meta').count(),0,'No invented version while metadata is unavailable');
+  aboutFailure=false;
+  await aboutDialog.getByRole('button',{name:'Retry',exact:true}).click();
+  await aboutDialog.getByText('1.0.0',{exact:true}).waitFor();
+  assert.equal(await aboutDialog.locator('code').getAttribute('title'),aboutFixture.build);
+  assert.equal(await aboutDialog.locator('.about-copyright').innerText(),aboutFixture.copyright);
+  for(const [name,destination] of [['Source code','source'],['MIT License','license'],['Third-party notices','notices']]){
+    const link=aboutDialog.getByRole('link',{name:new RegExp(name)});
+    await Promise.all([page.waitForResponse('**/api/about/open/'+destination),link.click()]);
+    assert.deepEqual(aboutRequests.at(-1),{path:'/api/about/open/'+destination,method:'POST'});
+  }
+  aboutLinkFailure=true;
+  await aboutDialog.getByRole('link',{name:/Source code/}).click();
+  await aboutDialog.getByRole('textbox',{name:'Link address'}).waitFor();
+  assert.equal(await aboutDialog.getByRole('textbox',{name:'Link address'}).inputValue(),aboutFixture.repositoryUrl);
+  aboutLinkFailure=false;
+  await aboutDialog.getByRole('button',{name:'Close',exact:true}).focus();
+  await page.keyboard.press('Tab');
+  assert.ok(await page.evaluate(()=>!!document.activeElement.closest('.about-dialog')),'Tab focus stays in the modal');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.about-dialog[open]').count(),0);
+  assert.ok(await page.locator('#about-button').evaluate(e=>e===document.activeElement),'Escape restores the launching button');
+  await page.evaluate(()=>window.deliverNative('window:about'));
+  await aboutDialog.waitFor();
+  assert.equal(await aboutDialog.getByRole('textbox',{name:'Link address'}).count(),0);
+  await aboutDialog.locator('summary').click();
+  assert.equal(await aboutDialog.locator('pre').textContent(),aboutFixture.licenseText);
+  for(const width of [1200,680,520]){
+    await page.setViewportSize({width,height:480});
+    const box=await aboutDialog.boundingBox();
+    assert.ok(box.x>=15 && box.x+box.width<=width-15 && box.y>=15 && box.y+box.height<=465,'Expanded About fits the viewport');
+    assert.ok(await aboutDialog.evaluate(e=>e.scrollWidth<=e.clientWidth),'License has no horizontal overflow');
+  }
+  await aboutDialog.getByRole('button',{name:'Close',exact:true}).click();
+  await page.setViewportSize({width:1200,height:780});
+  console.log('PASS About via footer and tray bridge, accurate metadata, license, external links, retry, focus and small-window layout');
   const pending=fixture.map(a=>({...a,signedIn:false,updatedAt:null,usage:null}));
   state={accounts:pending,login:null};hold=false;held.splice(0).forEach(send=>send());
   await page.locator('.card').first().waitFor();
