@@ -1,0 +1,56 @@
+HEADROOM INTERFACE STUDY — NOVEMBER 11, 2026
+
+Branch: design/interface-refresh (local experiment; main is unchanged).
+
+Compared three coded layout prototypes using the same three example accounts,
+long email, capacity totals, and forecast, at a 1200 x 780 viewport. Evaluated
+headlessly through DOM bounds, without controlling or capturing the desktop.
+
+Gallery: expanded cards, large capacity and forecast panels. Last account
+bottom at 916 px. Familiar, but repeats labels and reserves too much space
+for empty resets and secondary actions.
+
+Sidebar: persistent navigation and vertically stacked insights. Last account
+bottom at 1216 px. Gives future sections room, but consumes useful account
+width and pushes essential balances below the fold.
+
+Focus: capacity and runway side by side, aligned account rows, separate Activity
+view. Last account bottom at 832 px in the rough prototype, with room to tighten
+spacing in implementation. No email clipping or horizontal page overflow.
+
+Selected direction: Focus. Keep capacity and runway immediately visible, put
+account identity, allowance, reset time, and banked resets into predictable
+columns, and move destructive actions into account menus. Keep information
+about calculations available in disclosures. Activity gets dedicated space
+for scenario controls and graphs without crowding everyday monitoring.
+
+Visual direction: charcoal surfaces, restrained periwinkle for emphasis,
+mint for banked capacity, amber for limits and stale data. Tabular numbers,
+one spacing scale, visible keyboard focus, reduced-motion support, and compact
+loading/empty/error states. Account colors stay consistent across filtering.
+
+The custom title bar, controls, and frame are drawn by the app. Windows keeps
+native move/resize/snap behavior, but must not draw its title bar or border.
+No additional frontend dependencies or network fonts are introduced.
+
+Implemented layout: at 1200 x 780, the third account ends at 721 px. Both
+capacity and runway summaries and all three account rows fit without scrolling.
+Validated at 520, 680, 800, 1024, 1200, 1440, and 2560 px: consistent section edges,
+long emails on one line, no horizontal overflow, SVG labels inside their plots,
+and captions separated from axis text. Smaller windows use stacked account
+sections; the 520 px case also covers a small window under display scaling.
+Larger account sets remain searchable and scroll vertically.
+
+The Overview always summarizes all accounts at recent pace, including verified
+banked resets. Activity account filters and scenario controls remain independent.
+Account menus support Escape and restore focus; refresh remains named for screen
+readers when its text is hidden in small windows. History failure has an explicit
+retry state instead of an endless loading animation.
+
+Frame implementation references:
+https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute
+https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmncrenderingpolicy
+WM_NCCALCSIZE continues to provide the full client area. DWM non-client rendering
+is disabled, and Windows 11's separate border color is set to DWMWA_COLOR_NONE.
+Native interactions still require manual verification; no desktop control or
+screen capture was used during this redesign.

@@ -45,8 +45,14 @@ profiles count once using the freshest reading. Details, source dates, and a
 per-account breakdown are under "How this estimate works". See
 docs/usage-capacity.txt in the source repository for research and assumptions.
 
-The dashboard shares one content width, with aligned account sections and
-collapsible reset expiration dates. Startup shows animated placeholders until
+The Overview pairs available capacity with estimated runway and lists accounts
+in aligned rows. Search appears for larger account lists; per-account menus
+hold activity and removal actions. Activity contains the detailed forecast,
+scenario controls, and usage graphs. Account colors stay consistent across
+filters. Reset expiration dates and calculation explanations are expandable.
+The custom frame suppresses the Windows title bar and native border while
+retaining native move, resize, snap, and drag-to-restore behavior.
+Startup shows animated placeholders until
 each account's first reading arrives. Connection failures, signed-out accounts,
 and a genuinely empty account list have different states. Reduced-motion system
 preferences disable loading animations.

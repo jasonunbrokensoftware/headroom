@@ -119,13 +119,14 @@ export function forecastUsage(accounts, histories, now, multiplier = 1, useReset
 }
 
 const colors = ['#aebeFF','#92ddbd','#f2c785','#d2a5f4','#87cced','#ed9db3','#b9d58b'];
-export function historySeries(accounts, histories, now, days, metric) {
+export const historyColor = index => colors[Math.max(0,index) % colors.length];
+export function historySeries(accounts, histories, now, days, metric, paletteAccounts = accounts) {
   const selected = uniqueAccounts(accounts,now), cutoff = now/1000-days*DAY;
-  return selected.map((account,index)=>{
+  return selected.map(account=>{
     const history=histories.find(h=>h.accountId===account.id);
     const points=metric==='tokens' ? (history?.tokens?.days||[]).map(d=>({at:Date.parse(d.date+'T00:00:00Z')/1000,value:d.tokens})) :
       (history?.points||[]).map(p=>({at:p.at,value:metric==='resets'?p.resets:p.remaining}));
-    return {id:account.id,label:account.email||account.name,color:colors[index%colors.length],
+    return {id:account.id,label:account.email||account.name,color:historyColor(paletteAccounts.findIndex(a=>a.id===account.id)),
       points:points.filter(p=>p.at>=cutoff && p.at<=now/1000)};
   });
 }

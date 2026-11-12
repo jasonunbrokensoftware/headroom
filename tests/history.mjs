@@ -72,3 +72,9 @@ const capacity=plotHistory(historySeries([a],histories,now,7,'remaining'),now,7,
 assert.equal(capacity.lines[0].dots.length,1); assert.equal(capacity.max,100);
 assert.equal(plotHistory([],now,7,'tokens').empty,true);
 console.log('PASS account-wide graph data preserves real zeroes, missing days, and unknown balances');
+const other=account('other'), palette=[a,other,duplicate];
+const allSeries=historySeries(palette,histories,now,7,'tokens',palette);
+const selectedSeries=historySeries([other],histories,now,7,'tokens',palette);
+assert.equal(selectedSeries[0].color,allSeries.find(line=>line.id===other.id).color);
+assert.equal(historySeries([duplicate],histories,now,7,'tokens',palette)[0].id,duplicate.id);
+console.log('PASS account colors stay stable across filtering and duplicate profiles remain individually selectable');
