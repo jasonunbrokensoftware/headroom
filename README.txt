@@ -242,6 +242,13 @@ HEADROOM_BROWSER can select an installed Chromium/Edge executable. These tests
 use isolated fake accounts and no desktop window or screen capture.
 
 The JavaScript checks need a current Node.js version for development only.
+For development updates, fully Quit Headroom from its tray menu, then use:
+  tools/Update-Portable.ps1 -SourceExe <published-EXE> -InstallDirectory <app-folder> -BackupDirectory <backup-folder>
+This helper is not an app launcher. It preserves the installed EXE's file identity,
+backs up its bytes as .exe.bak, verifies the replacement, and never touches settings
+or account data. It refuses a locked EXE. Do not rename a running installed EXE into
+an archive: Windows may follow that file through its shortcuts and open a separate,
+empty portable data folder. Run tests/update.ps1 to check this update procedure.
 HEADROOM_TEST_EXE can point the backend test at another Headroom executable.
 The delivered Windows app and saved account data are in the Headroom output
 folder. Move that app/data folder together with the EXE after the first refresh
