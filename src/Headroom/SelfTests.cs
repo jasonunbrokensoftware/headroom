@@ -56,6 +56,7 @@ internal static class SelfTests
             Check(NativeDesktop.WebViewRuntimeAvailable() == 1, "Statically linked Photino and WebView2 loader resolve the installed runtime without a window");
         }
         string iconFile = AppIcon.WindowIcon(folder);
+        Check(Path.GetFileNameWithoutExtension(iconFile) == "headroom-graphite", "Native window, taskbar and tray use the fixed Graphite icon");
         byte[] iconBytes = File.ReadAllBytes(iconFile);
         Check(OperatingSystem.IsWindows()
             ? iconBytes.Length > 6 && BitConverter.ToUInt16(iconBytes, 2) == 1 && BitConverter.ToUInt16(iconBytes, 4) == 10
@@ -64,7 +65,7 @@ internal static class SelfTests
         var iconHashes = new HashSet<string>();
         foreach (string theme in new[] { "ember", "orchard", "lagoon", "rosewood", "classic", "graphite" })
         {
-            string themedFile = AppIcon.WindowIcon(folder, theme);
+            string themedFile = AppIcon.Extract(folder, theme);
             byte[] themedBytes = File.ReadAllBytes(themedFile);
             iconHashes.Add(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(themedBytes)));
             Check(Path.GetFileName(themedFile).StartsWith("headroom-" + theme + "."), "Portable icon cache selects " + theme);
@@ -86,8 +87,8 @@ internal static class SelfTests
             string pins = Path.Combine(folder, "isolated-pins");
             Directory.CreateDirectory(pins);
             int result = NativeDesktop.TestTaskbarIcons(pins, Environment.ProcessPath!,
-                AppIcon.WindowIcon(folder, "classic"), AppIcon.WindowIcon(folder, "ember"));
-            Check(result == 0, "Shell-returned shortcut icon pixels follow repeated theme changes; other targets and launch details stay intact (stage " + result + ")");
+                AppIcon.Extract(folder, "classic"), iconFile);
+            Check(result == 0, "Shell shortcut icons can migrate from legacy artwork to Graphite; other targets and launch details stay intact (stage " + result + ")");
         }
         await using (var manager = new AccountManager(folder))
         {

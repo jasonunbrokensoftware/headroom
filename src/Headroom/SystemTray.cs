@@ -43,18 +43,6 @@ internal sealed unsafe partial class SystemTray : IDisposable
         version4 = Available && Shell_NotifyIconW(4, ref data); // NIM_SETVERSION
     }
     public void Hide() { if (Available) ShowWindow(window, 0); }
-    public void SetIcon(string iconFile)
-    {
-        nint next = WindowIcon.Load(iconFile, 32), previous = icon;
-        icon = next;
-        if (Available)
-        {
-            var data = Data();
-            data.Flags = 2; // NIF_ICON: keep tooltip, callbacks, and notification version.
-            Shell_NotifyIconW(1, ref data); // NIM_MODIFY; Explorer restart uses this new handle in Add().
-        }
-        WindowIcon.Release(previous);
-    }
     public void Show() { ShowWindow(window, IsIconic(window) ? 9 : 5); SetForegroundWindow(window); }
     internal static int NotificationAction(bool version4, uint notification) => version4
         ? notification switch { 0x400 or 0x401 => 1, 0x7b => 2, _ => 0 } // NIN_SELECT / NIN_KEYSELECT, WM_CONTEXTMENU

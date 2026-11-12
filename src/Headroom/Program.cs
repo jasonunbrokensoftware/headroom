@@ -131,15 +131,8 @@ app.MapGet("/api/appearance", () => Results.Json(new AppearancePreferences(Appea
 app.MapPost("/api/appearance", (AppearancePreferences input) =>
 {
     if (!Appearance.IsTheme(input.Theme)) throw new ArgumentException("Choose a supported color theme.");
-    string previous = PortableStorage.Settings().Theme;
+    // Theme changes affect the web interface only. Native icons stay Graphite.
     var settings = PortableStorage.UpdateSettings(current => current with { Theme = input.Theme });
-    try { desktop.ApplyTheme(settings.Theme); }
-    catch
-    {
-        PortableStorage.UpdateSettings(current => current with { Theme = previous });
-        try { desktop.ApplyTheme(previous); } catch { }
-        throw;
-    }
     return Results.Json(new AppearancePreferences(settings.Theme), AppJson.Default.AppearancePreferences);
 });
 app.MapGet("/api/accounts", () =>

@@ -68,27 +68,18 @@ restart, initial HTML, and preservation of Codex/startup preferences.
 
 Each palette includes matching SVG, ten-size ICO, and 512px PNG artwork, generated
 from the CSS accents by tools/Build-Icon.ps1. Classic preserves the original art.
-The page's loading icon and favicon are selected before first paint. Theme saves
-update the native window and tray on the UI thread; failures roll back the saved
-theme and interface. Windows icons use owned handles that are released on changes
-and shutdown, rather than repeatedly asking Photino for shared file icons.
-The EXE's embedded icon uses Ember. Its ten published RT_ICON resources are
-compared byte-for-byte with the Ember ICO during the single-EXE check.
-The window-icon update implementation is restored exactly to commit 3f47921,
-where the user confirmed unpinned theme updates worked. It uses the DPI-scaled
-SM_CXSMICON and SM_CXICON dimensions, independent owned handles, and small-then-
-large assignment. At 150% scaling those sources are 24px and 48px respectively.
-Enlarging ICON_SMALL to 48px was followed by stale unpinned taskbar icons. A
-partial rollback of handle sharing and update order left that size change in
-place and did not restore the user's observed behavior. The entire sizing
-attempt is now reverted; the reported small visual size is still unresolved.
-The test that required both slots to be large was removed with that incorrect
-requirement. Native read-back and Shell extraction checks are not tests of
-Explorer's visible taskbar rendering. Do not claim a visible fix from those
-checks alone. The tray keeps its independent handle and size.
-The tray uses NIM_MODIFY and keeps its latest handle for Explorer restart recovery.
-The headless self-test decodes all sixty Windows icon frames without opening a
-window or tray icon. Browser checks cover matching colors and failure rollback.
+The page's loading icon and favicon are selected before first paint. Only the
+interface icon follows the selected theme. The EXE, native window/taskbar, tray,
+and launch shortcuts always use Graphite. AppIcon.WindowIcon has no theme input;
+theme saves persist the interface preference without calling any native icon API.
+The native theme-update method and tray icon replacement method were removed.
+Windows icon handles are loaded once, retained for the window lifetime (including
+Explorer restart recovery for the tray), and released on shutdown. Linux uses the
+fixed Graphite PNG through Photino's native window icon API.
+The EXE's ten published RT_ICON resources are compared byte-for-byte with the
+Graphite ICO during the single-EXE check. The headless self-test decodes all sixty
+legacy/native icon frames and checks migration of scratch shortcuts to Graphite.
+Appearance checks cover all six interface palettes, persistence and initial paint.
 Native icon references:
 https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-seticon
 https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-loadimagew
@@ -114,14 +105,13 @@ https://learn.microsoft.com/en-us/windows/win32/shell/appids
 https://learn.microsoft.com/en-us/windows/win32/properties/props-system-appusermodel-relaunchiconresource
 https://learn.microsoft.com/en-us/windows/win32/properties/props-system-appusermodel-id
 
-Launch links reference the immutable portable data/icons/headroom-{theme}.ico.
+At startup, launch links are migrated to data/icons/headroom-graphite.ico.
 Before changing a shortcut, the adapter captures its old Shell icon location,
 index and flags through IExtractIcon::GetIconLocation, and its system image-list
 index through SHGetFileInfo(SHGFI_SYSICONINDEX). SHUpdateImage then notifies the
 Shell of the changed image using those OLD parameters, as Microsoft specifies.
-Targeted SHCNE_UPDATEITEM notifications announce changed shortcut files. Reusing
-and overwriting one ICO path failed the cached-pixel regression on this system;
-separate immutable theme files passed repeated switches in both directions.
+Targeted SHCNE_UPDATEITEM notifications announce changed shortcut files. The
+Graphite file is immutable and independent of the saved interface theme.
 https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shupdateimagew
 https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-iextracticonw-geticonlocation
 https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishelllinkw-seticonlocation
@@ -130,7 +120,11 @@ The previous visibility-cycle and DeleteTab/AddTab workarounds were removed.
 Theme updates never hide/show, activate, reposition or recreate the window/button.
 They must not disturb Windows Snap. No Explorer restart or global cache reset.
 
-Validation uses scratch links and a message-only HWND. It cycles cached icons,
+The user confirmed that live changes worked with Never Combine and failed with
+Always Combine while unpinned. A fixed Graphite identity on all OS surfaces is the
+chosen workaround; theme changes no longer attempt a taskbar repaint.
+
+Validation uses scratch links and a message-only HWND. It cycles legacy/Graphite icons,
 checks the pixels returned by the Shell (rendered into an in-memory bitmap, not
 a screen capture), preserves unrelated targets and launch details, verifies
 shortcut/no-shortcut metadata, and leaves hidden windows hidden. This validates

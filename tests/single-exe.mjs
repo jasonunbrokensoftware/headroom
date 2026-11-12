@@ -24,7 +24,7 @@ function position(rva) {
   throw new Error('Invalid PE section');
 }
 // Check the icon resources in the actual published EXE, not just its project
-// setting. Every frame must be the Ember artwork, including Explorer's sizes.
+// setting. Every frame must be the Graphite artwork, including Explorer's sizes.
 const resourceRoot = position(pe.readUInt32LE(opt + 112 + 2 * 8));
 function resourceEntry(directory, id) {
   const entries = pe.readUInt16LE(directory + 12) + pe.readUInt16LE(directory + 14);
@@ -40,14 +40,14 @@ function resourceData(type, id) {
   const start = position(pe.readUInt32LE(data));
   return pe.subarray(start, start + pe.readUInt32LE(data + 4));
 }
-const ember = await readFile(path.resolve('src/Headroom/Assets/headroom-ember.ico'));
+const graphite = await readFile(path.resolve('src/Headroom/Assets/headroom-graphite.ico'));
 const iconGroup = resourceData(14); // RT_GROUP_ICON
-assert.equal(iconGroup.readUInt16LE(4), ember.readUInt16LE(4), 'EXE retains every Ember icon size');
-for (let i = 0; i < ember.readUInt16LE(4); i++) {
+assert.equal(iconGroup.readUInt16LE(4), graphite.readUInt16LE(4), 'EXE retains every Graphite icon size');
+for (let i = 0; i < graphite.readUInt16LE(4); i++) {
   const frame = 6 + i * 16, groupFrame = 6 + i * 14;
-  const start = ember.readUInt32LE(frame + 12), length = ember.readUInt32LE(frame + 8);
-  assert.deepEqual(resourceData(3, iconGroup.readUInt16LE(groupFrame + 12)), ember.subarray(start, start + length),
-    'EXE Ember artwork at size ' + (ember[frame] || 256));
+  const start = graphite.readUInt32LE(frame + 12), length = graphite.readUInt32LE(frame + 8);
+  assert.deepEqual(resourceData(3, iconGroup.readUInt16LE(groupFrame + 12)), graphite.subarray(start, start + length),
+    'EXE Graphite artwork at size ' + (graphite[frame] || 256));
 }
 const imports = [];
 for (let p = position(pe.readUInt32LE(opt + 112 + 8)); pe.readUInt32LE(p + 12); p += 20) {

@@ -14,15 +14,13 @@ internal sealed class DesktopWindow
     private bool webReady;
     private SystemTray? tray;
     private WindowIcon? windowIcon;
-    private string dataDirectory = "";
     private bool hideOnReady;
 
     // Called on the application's original STA thread, also the GTK main thread on Linux.
     public void Run(DesktopStart start, Action stop)
     {
         hideOnReady = start.Background;
-        dataDirectory = start.DataDirectory;
-        string iconFile = AppIcon.WindowIcon(dataDirectory, PortableStorage.Settings().Theme);
+        string iconFile = AppIcon.WindowIcon(start.DataDirectory);
         if (OperatingSystem.IsWindows()) WindowIcon.PrepareTaskbar(iconFile);
         // WebView2's environment override takes precedence over its API parameter.
         // Keep the profile in the portable folder even if the parent process sets it.
@@ -78,24 +76,6 @@ internal sealed class DesktopWindow
             if (OperatingSystem.IsWindows()) { tray?.Dispose(); windowIcon?.Dispose(); }
             closing = true; created = false; stop();
         }
-    }
-
-    public void ApplyTheme(string theme)
-    {
-        if (!created || closing) return; // Headless checks have no native surfaces.
-        Exception? failure = null;
-        window!.Invoke(() =>
-        {
-            if (closing || closeRequested) return;
-            try
-            {
-                string iconFile = AppIcon.WindowIcon(dataDirectory, theme);
-                if (OperatingSystem.IsWindows()) { windowIcon?.Set(iconFile); tray?.SetIcon(iconFile); }
-                else window.SetIconFile(iconFile);
-            }
-            catch (Exception ex) { failure = ex; } // Never unwind through Photino's native callback.
-        });
-        if (failure is not null) throw new InvalidOperationException("Could not update the theme icons.", failure);
     }
 
     public void RequestClose()

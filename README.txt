@@ -22,14 +22,12 @@ All six are dark
 themes with coordinated surfaces, controls, and chart colors. Your selection is
 saved automatically in settings.json beside the EXE and applied before the first
 page paint on the next launch. Ember is the default.
-The interface, taskbar/window, and system tray icons follow the selected theme
-immediately and use the saved theme on startup. Icon variants are embedded in
-the EXE and cached under data/icons; no extra files are needed for distribution.
-Windows taskbar pins targeting this EXE are synchronized with the theme, including
-pins created before themed icons were supported. Their launch arguments and
-position are preserved. The app does not pin/unpin itself or restart Explorer.
-Theme changes also refresh the running taskbar button. With a pinned button,
-Windows may briefly redraw the window; its position and maximized state are kept.
+Only the interface icon follows the selected theme. The EXE, native window/taskbar,
+and system tray always use the neutral Graphite icon. Existing launch shortcuts
+targeting this EXE are updated to Graphite on startup, preserving their arguments
+and position. Icon assets are embedded and cached under data/icons; no extra files
+are needed for distribution. Theme changes do not update any OS icons or redraw
+the native window. The app does not pin/unpin itself or restart Explorer.
 
 The executable is compiled with .NET 10 Native AOT for Windows x64. It embeds
 the Vue production library and all UI assets. Photino.NET hosts the interface
@@ -262,7 +260,7 @@ Headroom's original vector mark is wwwroot/headroom.svg. The Windows ICO
 contains 16, 20, 24, 32, 40, 48, 64, 96, 128, and 256-pixel images, including a
 pixel-aligned 16px mark. A 512px PNG is included for the Linux window icon.
 The EXE, native window/taskbar, title bar, and webview favicon share this mark.
-The EXE's static file icon keeps the original colors; running window, tray, and
+The EXE, native window/taskbar, and tray use Graphite permanently. Only the
 interface icons use the selected theme. Classic uses the original icon artwork.
 The icon files are embedded; native window icons are cached under data/icons.
 Regenerate the artwork on Windows with tools/Build-Icon.ps1 (development only).

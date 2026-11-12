@@ -6,7 +6,10 @@ internal static class AppIcon
 {
     // Photino needs a file for its native window icon. Both formats are embedded,
     // so the executable can recreate this cache after an update or a clean install.
-    public static string WindowIcon(string dataDirectory, string? theme = null)
+    // OS surfaces keep one neutral identity; only the Vue interface follows the theme.
+    public static string WindowIcon(string dataDirectory) => Extract(dataDirectory, "graphite");
+
+    internal static string Extract(string dataDirectory, string theme)
     {
         string filename = "headroom-" + Appearance.Normalize(theme) + (OperatingSystem.IsWindows() ? ".ico" : ".png");
         string directory = Path.Combine(dataDirectory, "icons");
