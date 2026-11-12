@@ -17,6 +17,11 @@ internal static partial class WindowGestures
         // DefWindowProc. WM_NCCALCSIZE below still hides the entire native frame.
         // https://learn.microsoft.com/en-us/windows/win32/dwm/customframe
         SetWindowLongPtrW(window.WindowHandle, -16, GetWindowLongPtrW(window.WindowHandle, -16) | 0x00C00000); // GWL_STYLE, WS_CAPTION
+        // The webview owns every visible edge. Suppress non-client rendering on
+        // Windows 10 and the independent DWM border accent on Windows 11.
+        uint renderingPolicy = 1, borderColor = 0xfffffffe; // DWMNCRP_DISABLED, DWMWA_COLOR_NONE
+        DwmSetWindowAttribute(window.WindowHandle, 2, ref renderingPolicy, sizeof(uint));
+        DwmSetWindowAttribute(window.WindowHandle, 34, ref borderColor, sizeof(uint));
         SetWindowPos(window.WindowHandle, 0, 0, 0, 0, 0, 0x0037); // FRAMECHANGED, no move/size/activation/z-order
     }
 
@@ -85,6 +90,7 @@ internal static partial class WindowGestures
     private static unsafe partial bool SetWindowSubclass(nint window, delegate* unmanaged[Stdcall]<nint, uint, nuint, nint, nuint, nuint, nint> callback, nuint id, nuint data);
     [LibraryImport("comctl32.dll")] private static partial nint DefSubclassProc(nint window, uint message, nuint wParam, nint lParam);
     [LibraryImport("user32.dll")] private static partial nint GetWindowLongPtrW(nint window, int index);
+    [LibraryImport("dwmapi.dll")] private static partial int DwmSetWindowAttribute(nint window, uint attribute, ref uint value, int size);
     [LibraryImport("user32.dll")] private static partial nint SetWindowLongPtrW(nint window, int index, nint value);
     [LibraryImport("user32.dll")] private static partial nint MonitorFromWindow(nint window, uint flags);
     [LibraryImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)]
