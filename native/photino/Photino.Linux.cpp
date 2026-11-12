@@ -59,7 +59,8 @@ Photino::Photino(PhotinoInitParams *initParams) : _webview(nullptr)
 	// It makes xlib thread safe.
 	// Needed for get_position.
 	XInitThreads();
-	g_set_prgname("headroom");
+	const char* flatpakId = g_getenv("FLATPAK_ID");
+	g_set_prgname(flatpakId ? flatpakId : "headroom");
 	g_set_application_name("Headroom");
 	gtk_init(0, NULL);
 	notify_init(initParams->Title);

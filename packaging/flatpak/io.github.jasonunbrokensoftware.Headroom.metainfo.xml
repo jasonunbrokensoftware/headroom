@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.jasonunbrokensoftware.Headroom</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Headroom</name>
+  <summary>Monitor AI account usage and resets</summary>
+  <description>
+    <p>Headroom tracks usage, reset times, earned resets, and usage history across multiple ChatGPT and Codex accounts in one desktop dashboard.</p>
+    <p>It connects to the Codex CLI installed on your computer. Account names come from email and workspace information. Monitoring does not send model prompts or redeem resets.</p>
+    <p>The Flatpak stores settings and credentials in its private application data directory. It uses Flatpak host-command access to run your installed Codex CLI and manage its own optional startup entry.</p>
+  </description>
+  <launchable type="desktop-id">io.github.jasonunbrokensoftware.Headroom.desktop</launchable>
+  <url type="homepage">https://github.com/jasonunbrokensoftware/headroom</url>
+  <url type="bugtracker">https://github.com/jasonunbrokensoftware/headroom/issues</url>
+  <url type="vcs-browser">https://github.com/jasonunbrokensoftware/headroom</url>
+  <developer id="io.github.jasonunbrokensoftware"><name>Jason Carr</name></developer>
+  <content_rating type="oars-1.1"/>
+  <releases><release version="1.1.0" date="2026-11-12"/></releases>
+</component>

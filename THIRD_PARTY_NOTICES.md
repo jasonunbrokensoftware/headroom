@@ -11,3 +11,5 @@ The root MIT license applies to Headroom's original code and artwork. It does no
 | Bouncy Castle 2.6.2 | MIT; [included license](src/Headroom/BouncyCastle-LICENSE.txt). |
 
 Additional build dependencies, including Photino.NET, Microsoft WebView2, Windows Implementation Library, and .NET, are restored from their packages and remain subject to their respective license terms. Package versions are pinned in [Headroom.csproj](src/Headroom/Headroom.csproj).
+
+The Linux Flatpak additionally includes Fedora's unmodified libappindicator3 and libdbusmenu runtime libraries. Their original LGPL/GPL package notices and complete license files are installed under `/app/share/licenses/`, and exact corresponding source RPMs (including build specifications and patches) under `/app/share/headroom/sources/`. The [packaging helper](tools/Build-Flatpak.sh) verifies each source package matches its binary package. GTK, WebKit, and other GNOME libraries are supplied separately by the Flatpak runtime.

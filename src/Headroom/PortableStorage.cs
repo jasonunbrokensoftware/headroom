@@ -14,13 +14,23 @@ internal static class Appearance
 internal static class PortableStorage
 {
     private static readonly object SettingsLock = new();
-    public static string DataDirectory(string? option) => Path.GetFullPath(option ?? "data", AppContext.BaseDirectory);
+    internal static string RootDirectory
+    {
+        get
+        {
+            if (!FlatpakEnvironment.Active) return AppContext.BaseDirectory;
+            string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "headroom");
+            Directory.CreateDirectory(root);
+            return root;
+        }
+    }
+    public static string DataDirectory(string? option) => Path.GetFullPath(option ?? "data", RootDirectory);
 
     public static void SaveSettings(LocalSettings settings)
     {
         lock (SettingsLock)
         {
-            string path = Path.Combine(AppContext.BaseDirectory, "settings.json");
+            string path = Path.Combine(RootDirectory, "settings.json");
             File.WriteAllText(path + ".tmp", JsonSerializer.Serialize(settings, AppJson.Default.LocalSettings));
             File.Move(path + ".tmp", path, true);
         }
@@ -40,7 +50,7 @@ internal static class PortableStorage
     {
         lock (SettingsLock)
         {
-            string path = Path.Combine(AppContext.BaseDirectory, "settings.json");
+            string path = Path.Combine(RootDirectory, "settings.json");
             if (File.Exists(path))
                 return JsonSerializer.Deserialize(File.ReadAllText(path), AppJson.Default.LocalSettings) ?? new();
             var defaults = new LocalSettings();

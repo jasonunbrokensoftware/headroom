@@ -4,6 +4,8 @@ Headroom is a portable desktop dashboard for monitoring usage, reset times, and 
 
 Windows x64 and Linux x64 builds share the same backend and Vue interface. The Linux port is validated on Fedora 45, with isolated X11 and Wayland desktop tests. Other Linux distributions have not yet been validated.
 
+Download the Windows EXE or Linux Flatpak from [GitHub Releases](https://github.com/jasonunbrokensoftware/headroom/releases/latest). See the [Flatpak guide](docs/flatpak.md) for installation, Codex requirements, and importing portable data.
+
 ## Features
 
 - Multiple accounts identified by email and workspace, with usage refreshed every minute.
@@ -51,7 +53,7 @@ Run `./Headroom --install-desktop` from its permanent location to add **Headroom
 
 ## Portable data and history
 
-`settings.json` and `data/` are created beside the executable. Move them together to preserve accounts, settings, and history. Windows portable accounts can be copied to Linux with the Linux executable; clear a Windows-specific `codexPath` to use Linux discovery. **The data folder contains sign-in credentials and must remain private.** Runtime data and configuration are excluded from Git. Copies keep independent monitoring histories; they do not synchronize Headroom's local files.
+Standalone builds create `settings.json` and `data/` beside the executable. Move them together to preserve accounts, settings, and history. The Flatpak uses `~/.var/app/io.github.jasonunbrokensoftware.Headroom/data/headroom/` instead, because its installed executable is read-only. Windows portable accounts can be copied to Linux with the Linux executable; clear a Windows-specific `codexPath` to use Linux discovery. **The data folder contains sign-in credentials and must remain private.** Runtime data and configuration are excluded from Git. Copies keep independent monitoring histories; they do not synchronize Headroom's local files.
 
 Service-reported daily token history is downloaded when available. Allowance and reset histories are recorded while Headroom runs, using account-wide balances rather than activity from just this machine. Gaps remain unknown. Forecasts use allowance consumption, not a conversion from tokens to subscription capacity.
 

@@ -19,6 +19,7 @@ internal sealed class CodexRpc : IAsyncDisposable
     {
         var name = OperatingSystem.IsWindows() ? "codex.exe" : "codex";
         var specified = PortableStorage.Settings().CodexPath;
+        if (FlatpakEnvironment.Active) return FlatpakEnvironment.FindCodex(specified);
         if (!string.IsNullOrWhiteSpace(specified))
         {
             string configured = Path.GetFullPath(specified, AppContext.BaseDirectory);
@@ -77,7 +78,8 @@ internal sealed class CodexRpc : IAsyncDisposable
         foreach (string key in new[] { "TEMP", "TMP", "TMPDIR" }) start.Environment[key] = temporary;
         foreach (string key in new[] { "OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_ACCESS_TOKEN", "CODEX_REMOTE", "CODEX_REMOTE_TOKEN" })
             start.Environment.Remove(key);
-        process = Process.Start(start) ?? throw new InvalidOperationException("Could not start Codex.");
+        process = Process.Start(FlatpakEnvironment.Active ? FlatpakEnvironment.WrapCodex(start) : start)
+            ?? throw new InvalidOperationException("Could not start Codex.");
         // Drain without persisting auth URLs, tokens, or raw service responses.
         _ = Task.Run(async () => { while (await process.StandardError.ReadLineAsync() is not null) { } });
         reader = ReadAsync();

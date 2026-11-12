@@ -40,8 +40,25 @@ internal static class SelfTests
         Check(AccountIdentity.Workspace(identity with { WorkspaceName = null, WorkspaceId = null, Plan = "plus" }) == "Personal", "Personal workspace fallback");
         Check(AccountIdentity.Workspace(identity with { WorkspaceName = null, WorkspaceId = null }) == "Workspace unavailable", "Missing business workspace is not invented");
         Check(WindowGestures.HitTest("nw") == (13, 0) && WindowGestures.HitTest("se") == (17, 7) && WindowGestures.HitTest("bad").Windows == 0, "Cross-platform resize mapping and invalid gesture rejection");
-        string folder = Path.Combine(Path.GetTempPath(), "HeadroomTests", Guid.NewGuid().ToString("N"));
-        Check(PortableStorage.DataDirectory(null) == Path.Combine(AppContext.BaseDirectory, "data"), "Portable data is relative to the executable");
+        string folder = Path.Combine(FlatpakEnvironment.Active ? PortableStorage.RootDirectory : Path.GetTempPath(), "HeadroomTests", Guid.NewGuid().ToString("N"));
+        Check(PortableStorage.DataDirectory(null) == Path.Combine(PortableStorage.RootDirectory, "data"), "Data uses the writable application storage root");
+        Check(FlatpakEnvironment.Active || PortableStorage.RootDirectory == AppContext.BaseDirectory, "Standalone builds retain portable storage beside the executable");
+        if (FlatpakEnvironment.Active)
+        {
+            string? previousConfig = Environment.GetEnvironmentVariable("HOST_XDG_CONFIG_HOME");
+            string testConfig = Path.Combine(folder, "host-config");
+            Environment.SetEnvironmentVariable("HOST_XDG_CONFIG_HOME", testConfig);
+            try
+            {
+                FlatpakEnvironment.SetAutostart(true);
+                string launcher = Path.Combine(testConfig, "autostart", FlatpakEnvironment.AppId + ".desktop");
+                Check(File.ReadAllText(launcher).Contains("flatpak run --branch=stable --arch=x86_64 " + FlatpakEnvironment.AppId + " --background"),
+                    "Flatpak startup uses the exported application identity and background mode");
+                FlatpakEnvironment.SetAutostart(false);
+                Check(!File.Exists(launcher), "Flatpak startup removal only removes its own entry");
+            }
+            finally { Environment.SetEnvironmentVariable("HOST_XDG_CONFIG_HOME", previousConfig); }
+        }
         string portableHome = Path.Combine(folder, "portable");
         PortableCredentials.Prepare(portableHome);
         Check(File.ReadAllText(Path.Combine(portableHome, "config.toml")).Contains("cli_auth_credentials_store = \"file\""), "New accounts use portable credential storage");

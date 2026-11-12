@@ -150,6 +150,13 @@ Native AOT builds must target the OS and glibc version where they will run.
 
 DIAGNOSTICS
 
+The GitHub release also offers a Linux x86-64 Flatpak. Its installed files are
+read-only, so settings and data live in
+~/.var/app/io.github.jasonunbrokensoftware.Headroom/data/headroom/ instead.
+The Flatpak uses the host's installed Codex CLI and includes its tray libraries.
+See docs/flatpak.md for installation, permissions, account import, and builds.
+Standalone builds continue storing everything beside their executable.
+
   Headroom.exe --self-test
   Headroom.exe --self-test --integration-test
   Headroom.exe --headless --data-dir <separate-test-directory>

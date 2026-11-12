@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Headroom
+Comment=Monitor AI account usage and resets
+Exec=Headroom
+Icon=io.github.jasonunbrokensoftware.Headroom
+Terminal=false
+Categories=Utility;
+StartupWMClass=io.github.jasonunbrokensoftware.Headroom

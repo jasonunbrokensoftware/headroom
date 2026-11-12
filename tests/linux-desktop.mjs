@@ -3,24 +3,32 @@ import {spawn, spawnSync} from 'node:child_process';
 import {copyFile, mkdir, readFile, writeFile, chmod, access} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import os from 'node:os';
 assert.equal(process.platform,'linux');
 assert.equal(process.env.HEADROOM_ISOLATED_DESKTOP,'1','Use the isolated desktop test runner');
-const directory=path.resolve(".test-data/linux desktop $test 'quoted' "+Date.now());
+const flatpak=process.env.HEADROOM_FLATPAK_TEST==='1',appId='io.github.jasonunbrokensoftware.Headroom';
+const directory=flatpak?path.join(os.homedir(),'.var/app',appId,'data','desktop-test-'+Date.now(),'headroom'):
+  path.resolve(".test-data/linux desktop $test 'quoted' "+Date.now());
 await mkdir(directory,{recursive:true});
 const executable=path.join(directory,'Headroom');
-await copyFile(process.env.HEADROOM_TEST_EXE||'artifacts/linux-native/Headroom',executable);
-await chmod(executable,0o700);
+if(!flatpak){
+  await copyFile(process.env.HEADROOM_TEST_EXE||'artifacts/linux-native/Headroom',executable);
+  await chmod(executable,0o700);
+}
 const config=path.join(directory,'config'),data=path.join(directory,'desktop-data');
 const env={...process.env,XDG_CONFIG_HOME:config,XDG_DATA_HOME:data};
 // Exercise the installed system runtime, even when the test compositor uses
 // a private development toolchain with its own shared-library search path.
 delete env.LD_LIBRARY_PATH;
+let launcher;
+if(!flatpak){
 const install=spawnSync(executable,['--install-desktop'],{env,encoding:'utf8',timeout:10000});
 assert.equal(install.status,0,install.stderr);
-const launcher=await readFile(path.join(data,'applications/headroom.desktop'),'utf8');
+launcher=await readFile(path.join(data,'applications/headroom.desktop'),'utf8');
 assert.ok(launcher.includes('Terminal=false')&&launcher.includes('StartupWMClass=headroom'));
 assert.ok(!launcher.includes('--background'),'Application menu opens the window');
 await assert.rejects(access(path.join(config,'autostart/headroom.desktop')),'A new install does not enable autostart');
+}
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 let host;
 async function trayHost() {
@@ -33,7 +41,16 @@ async function trayHost() {
 async function run(background,withTray) {
   await writeFile(path.join(directory,'settings.json'),JSON.stringify({theme:'ember',startWithWindows:false}));
   const appEnv=process.env.HEADROOM_KWIN_TEST==='1'?{...env,WAYLAND_DEBUG:'client'}:env;
-  const child=spawn(executable,['--desktop-test',...(background?['--background']:[])],{env:appEnv,stdio:['ignore','pipe','pipe']});
+  const arguments_=['--desktop-test',...(background?['--background']:[])];
+  const command=flatpak?'flatpak':executable;
+  if(flatpak){
+    assert.equal(process.env.GDK_BACKEND,'wayland','Flatpak desktop checks use a private Wayland display');
+    arguments_.unshift('run','--command=env','--filesystem='+process.env.XDG_RUNTIME_DIR,
+      '--env=GDK_BACKEND=wayland','--env=WAYLAND_DISPLAY='+path.join(process.env.XDG_RUNTIME_DIR,process.env.WAYLAND_DISPLAY),
+      ...(process.env.HEADROOM_KWIN_TEST==='1'?['--env=WAYLAND_DEBUG=client']:[]),appId,
+      'XDG_DATA_HOME='+path.dirname(directory),'XDG_CONFIG_HOME='+config,'/app/bin/Headroom');
+  }
+  const child=spawn(command,arguments_,{env:flatpak?{...process.env,FLATPAK_USER_DIR:path.join(os.homedir(),'.local/share/flatpak')}:appEnv,stdio:['ignore','pipe','pipe']});
   let errors='';child.stderr.on('data',b=>errors+=b);
   const done=new Promise(resolve=>child.on('exit',resolve));
   let origin,key;
@@ -74,6 +91,7 @@ async function run(background,withTray) {
       await api('/window/test-action/5','POST');
       assert.ok(Number(await api('/window/test-state'))&2,'About reopens the window');
       assert.equal(Number(await api('/window/test-state'))&96,0,'Tray activation preserves the custom frame');
+      if(!flatpak){
       await api('/window/test-action/3','POST');
       const desktop=await readFile(path.join(config,'autostart/headroom.desktop'),'utf8');
       assert.ok(desktop.includes('--background')&&desktop.includes('Terminal=false'));
@@ -81,11 +99,12 @@ async function run(background,withTray) {
       await api('/window/test-action/3','POST');
       await assert.rejects(access(path.join(config,'autostart/headroom.desktop')));
       assert.equal(JSON.parse(await readFile(path.join(directory,'settings.json'),'utf8')).startWithWindows,false);
+      }
       await api('/window/test-action/4','POST');
     } else await api('/quit','POST');
     const timeout=setTimeout(()=>child.kill(),10000);
     assert.equal(await done,0,errors);clearTimeout(timeout);
-    console.log(`PASS Linux desktop: ${background?'background':'normal'} launch, paint, ${withTray?'tray, About, autostart and quit':'no-tray fallback'}`);
+    console.log(`PASS ${flatpak?'Flatpak':'Linux'} desktop: ${background?'background':'normal'} launch, paint, ${withTray?'tray, About'+(flatpak?'':', autostart')+' and quit':'no-tray fallback'}`);
   } finally {
     if(child.exitCode===null){if(origin)await api('/quit','POST').catch(()=>{});const timeout=setTimeout(()=>child.kill(),3000);await done;clearTimeout(timeout);}
   }
@@ -99,6 +118,7 @@ try {
   await run(true,false);
   // Exercise the generated Exec field through GIO's real desktop-entry parser.
   // A copied printf executable stands in for Headroom after the app tests finish.
+  if(!flatpak){
   await copyFile('/usr/bin/printf',executable);
   const launchTest=path.join(directory,'launch-test.desktop');
   await writeFile(launchTest,launcher.replace(/^(Exec=.*)$/m,'$1 HEADROOM_LAUNCH_OK'));
@@ -106,4 +126,5 @@ try {
   assert.equal(launched.status,0,launched.stderr);
   assert.equal(launched.stdout,'HEADROOM_LAUNCH_OK','Launcher handles spaces, dollar signs and quotes');
   console.log('PASS Linux application launcher quoting');
+  }
 } finally {host?.kill();}

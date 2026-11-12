@@ -39,7 +39,8 @@ internal sealed unsafe class LinuxTray : IDesktopTray
         this.refresh = refresh; this.quit = quit; this.open = open; this.about = about; this.changed = changed;
         current = this;
         LinuxDesktop.CreateTray(icon, PortableStorage.Settings().StartWithWindows ? 1 : 0, &Dispatch);
-        try { LinuxAutostart.Apply(PortableStorage.Settings().StartWithWindows); } catch { }
+        if (!FlatpakEnvironment.Active)
+            try { LinuxAutostart.Apply(PortableStorage.Settings().StartWithWindows); } catch { }
     }
     public void Show() => LinuxDesktop.Show();
     public void Hide() { if (Available) LinuxDesktop.Hide(); }
@@ -103,12 +104,14 @@ internal static class LinuxAutostart
     }
     internal static void Apply(bool enabled)
     {
+        if (FlatpakEnvironment.Active) { FlatpakEnvironment.SetAutostart(enabled); return; }
         string path = Path.Combine(Xdg("XDG_CONFIG_HOME", ".config"), "autostart", "headroom.desktop");
         if (!enabled) { if (File.Exists(path)) File.Delete(path); return; }
         Write(path, true);
     }
     internal static void InstallLauncher()
     {
+        if (FlatpakEnvironment.Active) return; // Flatpak exports the desktop entry.
         Write(Path.Combine(Xdg("XDG_DATA_HOME", ".local/share"), "applications", "headroom.desktop"), false);
         Apply(PortableStorage.Settings().StartWithWindows);
     }
