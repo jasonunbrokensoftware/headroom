@@ -28,7 +28,7 @@ const server = createServer(async (req,res) => {
   if (req.url === '/api/history') {
     res.writeHead(200, {'Content-Type':'application/json'});
     res.end(JSON.stringify({accounts:(state?.accounts||[]).map(a=>({accountId:a.id,identity:a.workspaceId,
-      tokens:{days:[{date:'2026-11-09',tokens:120000},{date:'2026-11-10',tokens:180000}],updatedAt:new Date(now).toISOString()},
+      tokens:{days:[{date:'2026-11-09',tokens:120000000},{date:'2026-11-10',tokens:329300000}],updatedAt:new Date(now).toISOString()},
       points:[{at:now/1000-300,remaining:50,resets:2},{at:now/1000,remaining:47,resets:2}],
       observedDays:[{date:'2026-11-11',plan:a.plan,consumedPercent:10,coveredSeconds:36000}],startedAt:now/1000-86400,error:null}))}));
     return;
@@ -103,6 +103,19 @@ try {
     for (const section of layout.sections) { assert.ok(Math.abs(section.x-first.x)<1); assert.ok(Math.abs(section.right-first.right)<1); }
     assert.equal(layout.overflow,false,`No horizontal overflow at ${width}`);
     for (const email of layout.emails) { assert.equal(email.nowrap,'nowrap'); assert.ok(email.scroll<=email.client,`Email fits at ${width}: ${JSON.stringify(email)}`); }
+    const charts = await page.locator('.chart-card').evaluateAll(cards => cards.map(card => {
+      const svg = card.querySelector('svg'), bounds = svg.getBoundingClientRect(), note = card.querySelector('.chart-note').getBoundingClientRect();
+      return {viewBox:svg.getAttribute('viewBox'), bottom:bounds.bottom, noteTop:note.top,
+        labels:[...svg.querySelectorAll('text')].map(text => {
+          const r = text.getBoundingClientRect();
+          return {text:text.textContent,inside:r.left>=bounds.left-1 && r.right<=bounds.right+1 && r.top>=bounds.top-1 && r.bottom<=bounds.bottom+1};
+        })};
+    }));
+    for (const chart of charts) {
+      assert.ok(chart.viewBox, `SVG viewBox survives DOM template parsing at ${width}`);
+      assert.ok(chart.noteTop >= chart.bottom + 8, `Chart caption clears axes at ${width}`);
+      for (const label of chart.labels) assert.ok(label.inside, `Chart label stays inside SVG at ${width}: ${label.text}`);
+    }
     if (width > 760) {
       assert.ok(Math.abs(layout.cards[2].right-first.right)<1,`Cards fill the shared width at ${width}`);
       for (const key of ['cards','resets','footers']) for (const r of layout[key]) assert.ok(Math.abs(r.y-layout[key][0].y)<1,`${key} align at ${width}`);

@@ -125,7 +125,7 @@ export function historySeries(accounts, histories, now, days, metric) {
 }
 
 export function plotHistory(series, now, days, metric) {
-  const width=600,height=190,left=52,right=20,top=16,bottom=30;
+  const width=600,height=220,left=68,right=20,top=20,bottom=40;
   const end=now/1000,start=end-days*DAY;
   const values=series.flatMap(s=>s.points.map(p=>p.value)).filter(finite);
   const max=metric==='remaining'?100:values.reduce((max,value)=>Math.max(max,value),1);
@@ -145,5 +145,5 @@ export function plotHistory(series, now, days, metric) {
   });
   return {width,height,left,right,top,bottom,max,lines,empty:values.length===0,
     ticks:[0,.5,1].map(f=>({value:max*f,y:y(max*f)})),
-    dates:[start,(start+end)/2,end].map(at=>({at,x:x(at)}))};
+    dates:[start,(start+end)/2,end].map((at,index)=>({at,x:x(at),anchor:['start','middle','end'][index]}))};
 }
