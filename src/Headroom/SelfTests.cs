@@ -42,6 +42,17 @@ internal static class SelfTests
         if (OperatingSystem.IsWindows())
         {
             Check(SystemTray.NativeDataSize == 976, "Native tray data matches the Windows x64 shell ABI without creating a tray icon");
+            uint[] rightClick = [0x204, 0x205, 0x7b];
+            int modernMenus = 0, legacyMenus = 0;
+            foreach (uint message in rightClick)
+            {
+                if (SystemTray.NotificationAction(true, message) == 2) modernMenus++;
+                if (SystemTray.NotificationAction(false, message) == 2) legacyMenus++;
+            }
+            Check(modernMenus == 1 && legacyMenus == 1,
+                "Tray right-click opens one menu with either modern or legacy shell notifications");
+            Check(SystemTray.NotificationAction(true, 0x401) == 1 && SystemTray.NotificationAction(true, 0x202) == 0,
+                "Modern tray keyboard activation works without duplicate legacy mouse activation");
             Check(NativeDesktop.WebViewRuntimeAvailable() == 1, "Statically linked Photino and WebView2 loader resolve the installed runtime without a window");
         }
         string iconFile = AppIcon.WindowIcon(folder);

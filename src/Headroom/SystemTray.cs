@@ -10,10 +10,12 @@ namespace Headroom;
 internal sealed unsafe partial class SystemTray : IDisposable
 {
     private const uint CallbackMessage = 0x8002;
+    private const uint MenuMessage = 0x8003;
     private static readonly ConcurrentDictionary<nint, SystemTray> Instances = new();
     private readonly nint window, icon;
     private readonly Action refresh, quit;
     private readonly uint taskbarCreated;
+    private bool version4, menuPending;
     internal static int NativeDataSize => sizeof(NotifyIconData);
     public bool Available { get; private set; }
     public SystemTray(nint window, string iconFile, Action refresh, Action quit)
@@ -37,13 +39,25 @@ internal sealed unsafe partial class SystemTray : IDisposable
     {
         var data = Data();
         Available = Shell_NotifyIconW(0, ref data); // NIM_ADD
-        if (Available) Shell_NotifyIconW(4, ref data); // NIM_SETVERSION
+        version4 = Available && Shell_NotifyIconW(4, ref data); // NIM_SETVERSION
     }
     public void Hide() { if (Available) ShowWindow(window, 0); }
     public void Show() { ShowWindow(window, IsIconic(window) ? 9 : 5); SetForegroundWindow(window); }
+    internal static int NotificationAction(bool version4, uint notification) => version4
+        ? notification switch { 0x400 or 0x401 => 1, 0x7b => 2, _ => 0 } // NIN_SELECT / NIN_KEYSELECT, WM_CONTEXTMENU
+        : notification switch { 0x202 or 0x203 => 1, 0x205 => 2, _ => 0 }; // Legacy mouse notifications only.
+    private void QueueMenu()
+    {
+        // Leave the shell callback before entering a popup's nested message loop.
+        if (menuPending) return;
+        menuPending = true;
+        if (!PostMessageW(window, MenuMessage, 0, 0)) menuPending = false;
+    }
     private void Menu()
     {
         nint menu = CreatePopupMenu();
+        if (menu == 0) return;
+        uint command;
         try
         {
             AppendMenuW(menu, 0, 1, "Open Headroom");
@@ -53,26 +67,29 @@ internal sealed unsafe partial class SystemTray : IDisposable
             AppendMenuW(menu, 0, 4, "Quit Headroom");
             GetCursorPos(out var point);
             SetForegroundWindow(window);
-            uint command = TrackPopupMenuEx(menu, 0x102, point.X, point.Y, window, 0);
+            command = TrackPopupMenuEx(menu, 0x182, point.X, point.Y, window, 0); // RETURNCMD | NONOTIFY | RIGHTBUTTON
             PostMessageW(window, 0, 0, 0);
-            switch (command)
-            {
-                case 1: Show(); break;
-                case 2: refresh(); break;
-                case 3:
-                    var settings = PortableStorage.Settings();
-                    bool enabled = !settings.StartWithWindows;
-                    try { PortableStorage.SaveSettings(settings with { StartWithWindows = enabled }); ApplyStartup(enabled); }
-                    catch (Exception ex)
-                    {
-                        try { PortableStorage.SaveSettings(settings); ApplyStartup(settings.StartWithWindows); } catch { }
-                        MessageBoxW(window, "Could not change startup: " + ex.Message, "Headroom", 0x10);
-                    }
-                    break;
-                case 4: quit(); break;
-            }
         }
         finally { DestroyMenu(menu); }
+        // Dismiss first, then apply the selection. Reopening reads the saved check state.
+        switch (command)
+        {
+            case 1: Show(); return;
+            case 2: refresh(); break;
+            case 3:
+                var settings = PortableStorage.Settings();
+                bool enabled = !settings.StartWithWindows;
+                try { ApplyStartup(enabled); PortableStorage.SaveSettings(settings with { StartWithWindows = enabled }); }
+                catch (Exception ex)
+                {
+                    try { PortableStorage.SaveSettings(settings); ApplyStartup(settings.StartWithWindows); } catch { }
+                    MessageBoxW(window, "Could not change startup: " + ex.Message, "Headroom", 0x10);
+                }
+                break;
+            case 4: quit(); return;
+        }
+        var data = Data();
+        Shell_NotifyIconW(3, ref data); // NIM_SETFOCUS: return focus after the tray menu closes.
     }
     private static void ApplyStartup(bool enabled)
     {
@@ -92,8 +109,17 @@ internal sealed unsafe partial class SystemTray : IDisposable
                 if (message == CallbackMessage)
                 {
                     uint action = (uint)((long)lParam & 0xffff);
-                    if (action is 0x202 or 0x203 or 0x400 or 0x401) tray.Show();
-                    else if (action is 0x205 or 0x7b) tray.Menu();
+                    switch (NotificationAction(tray.version4, action))
+                    {
+                        case 1: tray.Show(); break;
+                        case 2: tray.QueueMenu(); break;
+                    }
+                    return 0;
+                }
+                if (message == MenuMessage)
+                {
+                    try { tray.Menu(); }
+                    finally { tray.menuPending = false; }
                     return 0;
                 }
             }
