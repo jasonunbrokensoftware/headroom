@@ -17,6 +17,7 @@ createApp({
     historyAccount: 'all', historyDays: 30, historyMetric: 'remaining', paceMultiplier: 1, includeResets: true }),
   computed: { overview() { return summarizeUsage(this.accounts, this.now); },
     currentTheme() { return resolveTheme(this.theme); },
+    iconUrl() { return '/headroom-' + this.theme + '.svg'; },
     visibleAccounts() { const query=this.accountQuery.trim().toLowerCase(); return this.accounts.filter(a=>[a.email,a.workspace,this.planName(a.plan)].some(value=>value?.toLowerCase().includes(query))); },
     monitorLabel() { return this.stopped ? 'Monitoring stopped' : this.connectionError ? 'Disconnected' : !this.loaded ? 'Connecting…' : !this.accounts.length ? 'Ready to connect' : this.overview.fresh<this.overview.accounts ? 'Accounts need attention' : 'Monitoring'; },
     overviewForecast() { return forecastUsage(this.accounts, this.histories, this.now); },
@@ -84,12 +85,16 @@ createApp({
       this.$nextTick(()=>document.querySelector('.theme-option[aria-pressed="true"]')?.focus());
     },
     closeThemeMenu(restoreFocus = false) { this.themeOpen=false;if(restoreFocus)this.$nextTick(()=>document.getElementById('theme-picker')?.focus()); },
+    applyTheme(id) {
+      this.theme=resolveTheme(id).id;document.documentElement.dataset.theme=this.theme;
+      const favicon=document.querySelector('link[rel="icon"]');if(favicon)favicon.href='/headroom-'+this.theme+'.svg';
+    },
     async selectTheme(id) {
       if(this.themeSaving || id===this.theme)return;
       const previous=this.theme;
-      this.theme=resolveTheme(id).id;document.documentElement.dataset.theme=this.theme;this.themeSaving=true;this.themeError='';
-      try { const saved=await this.api('/appearance','POST',{theme:this.theme});this.theme=resolveTheme(saved.theme).id;document.documentElement.dataset.theme=this.theme; }
-      catch { this.theme=previous;document.documentElement.dataset.theme=previous;this.themeError='Could not save the theme. Please try again.'; }
+      this.applyTheme(id);this.themeSaving=true;this.themeError='';
+      try { const saved=await this.api('/appearance','POST',{theme:this.theme});this.applyTheme(saved.theme); }
+      catch { this.applyTheme(previous);this.themeError='Could not save the theme. Please try again.'; }
       finally { this.themeSaving=false; }
     },
     async action(fn) { this.error = ''; try { await fn(); await this.load(); } catch (e) { this.error = e.message; } },

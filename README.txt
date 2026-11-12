@@ -22,6 +22,9 @@ All six are dark
 themes with coordinated surfaces, controls, and chart colors. Your selection is
 saved automatically in settings.json beside the EXE and applied before the first
 page paint on the next launch. Ember is the default.
+The interface, taskbar/window, and system tray icons follow the selected theme
+immediately and use the saved theme on startup. Icon variants are embedded in
+the EXE and cached under data/icons; no extra files are needed for distribution.
 
 The executable is compiled with .NET 10 Native AOT for Windows x64. It embeds
 the Vue production library and all UI assets. Photino.NET hosts the interface
@@ -247,5 +250,7 @@ Headroom's original vector mark is wwwroot/headroom.svg. The Windows ICO
 contains 16, 20, 24, 32, 40, 48, 64, 96, 128, and 256-pixel images, including a
 pixel-aligned 16px mark. A 512px PNG is included for the Linux window icon.
 The EXE, native window/taskbar, title bar, and webview favicon share this mark.
+The EXE's static file icon keeps the original colors; running window, tray, and
+interface icons use the selected theme. Classic uses the original icon artwork.
 The icon files are embedded; native window icons are cached under data/icons.
 Regenerate the artwork on Windows with tools/Build-Icon.ps1 (development only).

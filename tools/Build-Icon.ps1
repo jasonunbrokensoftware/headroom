@@ -26,16 +26,17 @@ function RoundedPath([single]$x, [single]$y, [single]$w, [single]$h, [single]$ra
     $path.CloseFigure()
     return $path
 }
-function RenderIcon([int]$size) {
+$originalPalette = @{ Start='#CBD4FF'; End='#8FA4F4'; Border='#8C9DD8'; Ink='#182344' }
+function RenderIcon([int]$size, [hashtable]$palette = $originalPalette) {
     $large = [Drawing.Bitmap]::new($size * 4, $size * 4, [Drawing.Imaging.PixelFormat]::Format32bppArgb)
     $g = [Drawing.Graphics]::FromImage($large)
     $g.Clear([Drawing.Color]::Transparent)
     $g.SmoothingMode = [Drawing.Drawing2D.SmoothingMode]::AntiAlias
     $g.ScaleTransform([single]($size / 16.0), [single]($size / 16.0))
     $tile = RoundedPath 1 1 62 62 15
-    $gradient = [Drawing.Drawing2D.LinearGradientBrush]::new([Drawing.PointF]::new(0,0), [Drawing.PointF]::new(64,64), [Drawing.ColorTranslator]::FromHtml('#CBD4FF'), [Drawing.ColorTranslator]::FromHtml('#8FA4F4'))
-    $border = [Drawing.Pen]::new([Drawing.ColorTranslator]::FromHtml('#8C9DD8'), [single].8)
-    $ink = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#182344'))
+    $gradient = [Drawing.Drawing2D.LinearGradientBrush]::new([Drawing.PointF]::new(0,0), [Drawing.PointF]::new(64,64), [Drawing.ColorTranslator]::FromHtml($palette.Start), [Drawing.ColorTranslator]::FromHtml($palette.End))
+    $border = [Drawing.Pen]::new([Drawing.ColorTranslator]::FromHtml($palette.Border), [single].8)
+    $ink = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml($palette.Ink))
     $g.FillPath($gradient, $tile)
     $g.DrawPath($border, $tile)
     if ($size -eq 16) {
@@ -59,16 +60,17 @@ function RenderIcon([int]$size) {
     return $bitmap
 }
 
+function WriteIconFiles([string]$name, [hashtable]$palette) {
 $sizes = @(16,20,24,32,40,48,64,96,128,256)
 $frames = @()
 foreach ($size in $sizes) {
-    $bitmap = RenderIcon $size
+    $bitmap = RenderIcon $size $palette
     $stream = [IO.MemoryStream]::new()
     $bitmap.Save($stream, [Drawing.Imaging.ImageFormat]::Png)
     $frames += ,$stream.ToArray()
     $bitmap.Dispose(); $stream.Dispose()
 }
-$output = [IO.File]::Create((Join-Path $assets 'headroom.ico'))
+$output = [IO.File]::Create((Join-Path $assets ($name + '.ico')))
 $writer = [IO.BinaryWriter]::new($output)
 try {
     $writer.Write([uint16]0); $writer.Write([uint16]1); $writer.Write([uint16]$sizes.Count)
@@ -83,9 +85,37 @@ try {
     }
     foreach ($frame in $frames) { $writer.Write([byte[]]$frame) }
 } finally { $writer.Dispose(); $output.Dispose() }
-$linux = RenderIcon 512
-$linux.Save((Join-Path $assets 'headroom.png'), [Drawing.Imaging.ImageFormat]::Png)
+$linux = RenderIcon 512 $palette
+$linux.Save((Join-Path $assets ($name + '.png')), [Drawing.Imaging.ImageFormat]::Png)
 $linux.Dispose()
+}
+WriteIconFiles 'headroom' $originalPalette
+
+# Generate themed vectors and native exports from the actual CSS accents.
+# These are build-time assets; the portable app needs no drawing library.
+function MixColor([string]$hex, [int]$target, [double]$fraction) {
+    $color = [Drawing.ColorTranslator]::FromHtml($hex)
+    $r = [int][Math]::Round($color.R * (1-$fraction) + $target * $fraction)
+    $g = [int][Math]::Round($color.G * (1-$fraction) + $target * $fraction)
+    $b = [int][Math]::Round($color.B * (1-$fraction) + $target * $fraction)
+    return '#{0:X2}{1:X2}{2:X2}' -f $r,$g,$b
+}
+$styles = [IO.File]::ReadAllText((Join-Path $project 'wwwroot\style.css'))
+$themeStyles = [ordered]@{ ember = [regex]::Match($styles, ':root\s*\{([^}]+)\}').Groups[1].Value }
+foreach($match in [regex]::Matches($styles, ':root\[data-theme="([a-z]+)"\]\{([^}]+)\}')) {
+    $themeStyles[$match.Groups[1].Value] = $match.Groups[2].Value
+}
+foreach($id in $themeStyles.Keys) {
+    $accent = [regex]::Match($themeStyles[$id], '--accent:\s*(#[a-fA-F0-9]{6})').Groups[1].Value
+    $ink = [regex]::Match($themeStyles[$id], '--accent-ink:\s*(#[a-fA-F0-9]{6})').Groups[1].Value
+    if(-not $accent -or -not $ink) { throw "Missing icon colors for $id" }
+    $palette = if($id -eq 'classic') { $originalPalette } else {
+        @{ Start=(MixColor $accent 255 .2); End=(MixColor $accent 0 .08); Border=(MixColor $accent 0 .18); Ink=$ink }
+    }
+    $themedSvg = $svg.Replace($originalPalette.Start,$palette.Start).Replace($originalPalette.End,$palette.End).Replace($originalPalette.Border,$palette.Border).Replace($originalPalette.Ink,$palette.Ink)
+    [IO.File]::WriteAllText((Join-Path $project ("wwwroot\headroom-$id.svg")), $themedSvg + "`n", [Text.UTF8Encoding]::new($false))
+    WriteIconFiles "headroom-$id" $palette
+}
 
 if ($PreviewDirectory) {
     New-Item -ItemType Directory -Force -Path $PreviewDirectory | Out-Null
@@ -111,4 +141,4 @@ if ($PreviewDirectory) {
     $preview.Save((Join-Path $PreviewDirectory 'headroom-icon-preview.png'),[Drawing.Imaging.ImageFormat]::Png)
     $preview.Dispose()
 }
-Write-Output 'Built Headroom SVG, 512px PNG, and 10-size Windows ICO (16–256px).'
+Write-Output 'Built the original icon and all theme variants as SVG, 512px PNG, and 10-size Windows ICO (16–256px).'

@@ -41,7 +41,13 @@ async function stop() {
   child = null;
 }
 async function pageTheme(theme) {
-  assert.ok((await (await fetch(origin + '/')).text()).includes('data-theme="' + theme + '"'), 'Saved theme is rendered before first paint');
+  const html = await (await fetch(origin + '/')).text();
+  assert.ok(html.includes('data-theme="' + theme + '"'), 'Saved theme is rendered before first paint');
+  assert.ok(html.includes('href="/headroom-' + theme + '.svg"') && html.includes('src="/headroom-' + theme + '.svg"'), 'Favicon and loading icon match before first paint');
+  const icon = await fetch(origin + '/headroom-' + theme + '.svg');
+  assert.equal(icon.status, 200);
+  assert.equal(icon.headers.get('Content-Type'), 'image/svg+xml');
+  assert.ok((await icon.text()).includes('<svg'));
 }
 try {
   await start();
@@ -50,6 +56,7 @@ try {
   assert.deepEqual(await (await api()).json(), { theme: 'ember' });
   await pageTheme('ember');
   assert.ok((await (await fetch(origin + '/appearance.js')).text()).includes('resolveTheme'));
+  assert.equal((await fetch(origin + '/headroom-unknown.svg')).status, 404);
   for (const theme of ['orchard', 'lagoon', 'rosewood', 'classic', 'graphite', 'ember']) {
     const result = await api({ theme });
     assert.equal(result.status, 200);

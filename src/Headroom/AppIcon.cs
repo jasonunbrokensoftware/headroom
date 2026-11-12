@@ -6,9 +6,9 @@ internal static class AppIcon
 {
     // Photino needs a file for its native window icon. Both formats are embedded,
     // so the executable can recreate this cache after an update or a clean install.
-    public static string WindowIcon(string dataDirectory)
+    public static string WindowIcon(string dataDirectory, string? theme = null)
     {
-        string filename = OperatingSystem.IsWindows() ? "headroom.ico" : "headroom.png";
+        string filename = "headroom-" + Appearance.Normalize(theme) + (OperatingSystem.IsWindows() ? ".ico" : ".png");
         string directory = Path.Combine(dataDirectory, "icons");
         Directory.CreateDirectory(directory);
         string path = Path.Combine(directory, filename);

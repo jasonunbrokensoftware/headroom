@@ -12,7 +12,8 @@ internal sealed unsafe partial class SystemTray : IDisposable
     private const uint CallbackMessage = 0x8002;
     private const uint MenuMessage = 0x8003;
     private static readonly ConcurrentDictionary<nint, SystemTray> Instances = new();
-    private readonly nint window, icon;
+    private readonly nint window;
+    private nint icon;
     private readonly Action refresh, quit;
     private readonly uint taskbarCreated;
     private bool version4, menuPending;
@@ -21,7 +22,7 @@ internal sealed unsafe partial class SystemTray : IDisposable
     public SystemTray(nint window, string iconFile, Action refresh, Action quit)
     {
         this.window = window; this.refresh = refresh; this.quit = quit;
-        icon = LoadImageW(0, iconFile, 1, 32, 32, 0x10); // IMAGE_ICON, LR_LOADFROMFILE
+        icon = WindowIcon.Load(iconFile, 32);
         taskbarCreated = RegisterWindowMessageW("TaskbarCreated");
         Instances[window] = this;
         SetWindowSubclass(window, &Procedure, 2, 0);
@@ -42,6 +43,18 @@ internal sealed unsafe partial class SystemTray : IDisposable
         version4 = Available && Shell_NotifyIconW(4, ref data); // NIM_SETVERSION
     }
     public void Hide() { if (Available) ShowWindow(window, 0); }
+    public void SetIcon(string iconFile)
+    {
+        nint next = WindowIcon.Load(iconFile, 32), previous = icon;
+        icon = next;
+        if (Available)
+        {
+            var data = Data();
+            data.Flags = 2; // NIF_ICON: keep tooltip, callbacks, and notification version.
+            Shell_NotifyIconW(1, ref data); // NIM_MODIFY; Explorer restart uses this new handle in Add().
+        }
+        WindowIcon.Release(previous);
+    }
     public void Show() { ShowWindow(window, IsIconic(window) ? 9 : 5); SetForegroundWindow(window); }
     internal static int NotificationAction(bool version4, uint notification) => version4
         ? notification switch { 0x400 or 0x401 => 1, 0x7b => 2, _ => 0 } // NIN_SELECT / NIN_KEYSELECT, WM_CONTEXTMENU
@@ -132,7 +145,7 @@ internal sealed unsafe partial class SystemTray : IDisposable
         var data = Data(); Shell_NotifyIconW(2, ref data);
         RemoveWindowSubclass(window, &Procedure, 2);
         Instances.TryRemove(window, out _);
-        if (icon != 0) DestroyIcon(icon);
+        WindowIcon.Release(icon); icon = 0;
         Available = false;
     }
     private static void Copy(string text, char* destination, int length)
@@ -145,7 +158,6 @@ internal sealed unsafe partial class SystemTray : IDisposable
         public uint Version; public fixed char InfoTitle[64]; public uint InfoFlags; public Guid Guid; public nint BalloonIcon;
     }
     [LibraryImport("shell32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static partial bool Shell_NotifyIconW(uint message, ref NotifyIconData data);
-    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)] private static partial nint LoadImageW(nint instance, string name, uint type, int width, int height, uint flags);
     [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)] private static partial uint RegisterWindowMessageW(string name);
     [LibraryImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static partial bool ShowWindow(nint window, int command);
     [LibraryImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static partial bool IsIconic(nint window);
@@ -154,7 +166,6 @@ internal sealed unsafe partial class SystemTray : IDisposable
     [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)] [return: MarshalAs(UnmanagedType.Bool)] private static partial bool AppendMenuW(nint menu, uint flags, nuint id, string? text);
     [LibraryImport("user32.dll")] private static partial uint TrackPopupMenuEx(nint menu, uint flags, int x, int y, nint window, nint parameters);
     [LibraryImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static partial bool DestroyMenu(nint menu);
-    [LibraryImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static partial bool DestroyIcon(nint icon);
     [LibraryImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static partial bool GetCursorPos(out Point point);
     [LibraryImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static partial bool PostMessageW(nint window, uint message, nint wParam, nint lParam);
     [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)] private static partial int MessageBoxW(nint window, string text, string caption, uint type);

@@ -45,7 +45,7 @@ const server = createServer(async (req,res) => {
   }
   const file = path.resolve(root, req.url === '/' ? 'index.html' : '.' + req.url);
   if (!file.startsWith(root + path.sep)) { res.writeHead(404); res.end(); return; }
-  try { let data = await readFile(file); if(req.url==='/')data=data.toString().replace('<html lang="en">',`<html lang="en" data-theme="${savedTheme}">`);res.writeHead(200, {'Content-Type':mime[path.extname(file)] || 'application/octet-stream'}); res.end(data); }
+  try { let data = await readFile(file); if(req.url==='/')data=data.toString().replace('<html lang="en">',`<html lang="en" data-theme="${savedTheme}">`).replaceAll('/headroom.svg',`/headroom-${savedTheme}.svg`);res.writeHead(200, {'Content-Type':mime[path.extname(file)] || 'application/octet-stream'}); res.end(data); }
   catch { res.writeHead(404); res.end(); }
 });
 await new Promise(resolve => server.listen(0,'127.0.0.1',resolve));
@@ -150,6 +150,7 @@ try {
   await page.setViewportSize({width:1200,height:780});
   const themeNames=['Ember','Orchard','Lagoon','Classic','Graphite','Rosewood'];
   const themeBackgrounds=new Set();
+  const iconColors=new Set();
   for(const name of themeNames){
     const before=await page.evaluate(()=>window.bridgeMessages.length);
     await page.getByRole('button',{name:'Color theme',exact:true}).click();
@@ -157,6 +158,19 @@ try {
     await page.locator('.theme-option').filter({hasText:name}).click();
     await page.locator('.theme-save').filter({hasText:'Your choice is saved automatically.'}).waitFor();
     assert.equal(await page.locator('html').getAttribute('data-theme'),name.toLowerCase());
+    const iconPath='/headroom-'+name.toLowerCase()+'.svg';
+    assert.equal(await page.locator('.app-mark').getAttribute('src'),iconPath);
+    assert.equal(await page.locator('link[rel=icon]').getAttribute('href'),iconPath);
+    const pixels=await page.locator('.app-mark').evaluate(async img=>{
+      await img.decode();
+      const canvas=document.createElement('canvas');canvas.width=canvas.height=64;
+      const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,64,64);
+      return {tile:[...ctx.getImageData(32,12,1,1).data],ink:[...ctx.getImageData(20,24,1,1).data],corner:[...ctx.getImageData(0,0,1,1).data]};
+    });
+    assert.equal(pixels.tile[3],255);assert.equal(pixels.ink[3],255);assert.equal(pixels.corner[3],0);
+    assert.ok(pixels.tile[0]+pixels.tile[1]+pixels.tile[2]>pixels.ink[0]+pixels.ink[1]+pixels.ink[2],'The icon mark stays darker than its tile');
+    if(name==='Graphite')assert.ok(pixels.tile[0]===pixels.tile[1] && pixels.tile[1]===pixels.tile[2],'Graphite icon is neutral gray');
+    iconColors.add(pixels.tile.join(','));
     const colors=await page.evaluate(()=>{
       const probe=document.createElement('span');document.body.append(probe);
       const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d');
@@ -184,14 +198,18 @@ try {
     await page.setViewportSize({width:1200,height:780});
   }
   assert.equal(themeBackgrounds.size,themeNames.length,'Themes change the full surface palette, not just the accent');
+  assert.equal(iconColors.size,themeNames.length,'Each theme has a distinct matching icon');
   await page.reload({waitUntil:'domcontentloaded'});
   await page.locator('.runway-value').waitFor();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'rosewood','Saved theme is present on initial HTML after reload');
+  assert.equal(await page.locator('.app-mark').getAttribute('src'),'/headroom-rosewood.svg');
   themeFailure=true;
   await page.getByRole('button',{name:'Color theme',exact:true}).click();
   await page.locator('.theme-option').filter({hasText:'Ember'}).click();
   await page.locator('.theme-save.failed').waitFor();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'rosewood','Failed save restores previous theme');
+  assert.equal(await page.locator('.app-mark').getAttribute('src'),'/headroom-rosewood.svg','Failed save restores the icon');
+  assert.equal(await page.locator('link[rel=icon]').getAttribute('href'),'/headroom-rosewood.svg');
   themeFailure=false;await page.keyboard.press('Escape');
   await page.locator('.brand').dispatchEvent('mousedown',{button:0,detail:1,screenX:120,screenY:30});
   assert.equal(await page.evaluate(()=>window.bridgeMessages.at(-1).action),'drag');

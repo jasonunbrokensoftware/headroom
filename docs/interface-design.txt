@@ -66,6 +66,20 @@ header scrollbars, save-failure recovery, and a reload in the selected theme.
 An isolated EXE test covers API validation/authentication, persistence across
 restart, initial HTML, and preservation of Codex/startup preferences.
 
+Each palette includes matching SVG, ten-size ICO, and 512px PNG artwork, generated
+from the CSS accents by tools/Build-Icon.ps1. Classic preserves the original art.
+The page's loading icon and favicon are selected before first paint. Theme saves
+update the native window and tray on the UI thread; failures roll back the saved
+theme and interface. Windows icons use owned handles that are released on changes
+and shutdown, rather than repeatedly asking Photino for shared file icons.
+The tray uses NIM_MODIFY and keeps its latest handle for Explorer restart recovery.
+The headless self-test decodes all sixty Windows icon frames without opening a
+window or tray icon. Browser checks cover matching colors and failure rollback.
+Native icon references:
+https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-seticon
+https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-loadimagew
+https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shell_notifyiconw
+
 Frame implementation references:
 https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute
 https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmncrenderingpolicy

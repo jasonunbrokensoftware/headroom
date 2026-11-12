@@ -26,6 +26,7 @@
     <EmbeddedResource Include="wwwroot/*" LogicalName="web/%(Filename)%(Extension)" />
     <EmbeddedResource Include="Assets/headroom.ico" LogicalName="brand.headroom.ico" />
     <EmbeddedResource Include="Assets/headroom.png" LogicalName="brand.headroom.png" />
+    <EmbeddedResource Include="Assets/headroom-*.ico;Assets/headroom-*.png" LogicalName="brand.%(Filename)%(Extension)" />
     <EmbeddedResource Include="BouncyCastle-LICENSE.txt" LogicalName="licenses/BouncyCastle.txt" />
   </ItemGroup>
   <ItemGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">

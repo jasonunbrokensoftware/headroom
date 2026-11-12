@@ -110,16 +110,36 @@ foreach (var (route, resource, type) in new[] {
         string html = System.Text.Encoding.UTF8.GetString(bytes);
         // Render the portable preference before the first paint; loopback ports
         // change between launches, so browser-local storage is not authoritative.
-        app.MapGet(route, () => Results.Content(html.Replace("<html lang=\"en\">",
-            "<html lang=\"en\" data-theme=\"" + Appearance.Normalize(PortableStorage.Settings().Theme) + "\">"), type));
+        app.MapGet(route, () =>
+        {
+            string theme = Appearance.Normalize(PortableStorage.Settings().Theme);
+            return Results.Content(html.Replace("<html lang=\"en\">", "<html lang=\"en\" data-theme=\"" + theme + "\">")
+                .Replace("/headroom.svg", "/headroom-" + theme + ".svg"), type);
+        });
     }
     else app.MapGet(route, () => Results.Bytes(bytes, type));
 }
+app.MapGet("/headroom-{theme}.svg", (string theme) =>
+{
+    if (!Appearance.IsTheme(theme)) return Results.NotFound();
+    using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("web/headroom-" + theme + ".svg")
+        ?? throw new InvalidOperationException("Missing themed Headroom icon.");
+    using var buffer = new MemoryStream(); stream.CopyTo(buffer);
+    return Results.Bytes(buffer.ToArray(), "image/svg+xml");
+});
 app.MapGet("/api/appearance", () => Results.Json(new AppearancePreferences(Appearance.Normalize(PortableStorage.Settings().Theme)), AppJson.Default.AppearancePreferences));
 app.MapPost("/api/appearance", (AppearancePreferences input) =>
 {
     if (!Appearance.IsTheme(input.Theme)) throw new ArgumentException("Choose a supported color theme.");
+    string previous = PortableStorage.Settings().Theme;
     var settings = PortableStorage.UpdateSettings(current => current with { Theme = input.Theme });
+    try { desktop.ApplyTheme(settings.Theme); }
+    catch
+    {
+        PortableStorage.UpdateSettings(current => current with { Theme = previous });
+        try { desktop.ApplyTheme(previous); } catch { }
+        throw;
+    }
     return Results.Json(new AppearancePreferences(settings.Theme), AppJson.Default.AppearancePreferences);
 });
 app.MapGet("/api/accounts", () =>

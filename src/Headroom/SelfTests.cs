@@ -61,6 +61,26 @@ internal static class SelfTests
             ? iconBytes.Length > 6 && BitConverter.ToUInt16(iconBytes, 2) == 1 && BitConverter.ToUInt16(iconBytes, 4) == 10
             : iconBytes.Length > 24 && iconBytes[0] == 137 && iconBytes[1] == 80,
             "Embedded native window icon is available without external asset files");
+        var iconHashes = new HashSet<string>();
+        foreach (string theme in new[] { "ember", "orchard", "lagoon", "rosewood", "classic", "graphite" })
+        {
+            string themedFile = AppIcon.WindowIcon(folder, theme);
+            byte[] themedBytes = File.ReadAllBytes(themedFile);
+            iconHashes.Add(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(themedBytes)));
+            Check(Path.GetFileName(themedFile).StartsWith("headroom-" + theme + "."), "Portable icon cache selects " + theme);
+            if (OperatingSystem.IsWindows())
+            {
+                Check(BitConverter.ToUInt16(themedBytes, 4) == 10, theme + " contains all ten Windows icon sizes");
+                foreach (int size in new[] { 16, 20, 24, 32, 40, 48, 64, 96, 128, 256 })
+                {
+                    nint handle = WindowIcon.Load(themedFile, size);
+                    WindowIcon.Release(handle); // Validate native decoding without creating any window or tray item.
+                }
+            }
+            using var png = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("brand.headroom-" + theme + ".png");
+            Check(png is not null && png.ReadByte() == 137 && png.ReadByte() == 80, theme + " includes its Linux icon");
+        }
+        Check(iconHashes.Count == 6, "All six themed native icons are distinct");
         await using (var manager = new AccountManager(folder))
         {
             for (int i = 0; i < 7; i++) manager.Add();
