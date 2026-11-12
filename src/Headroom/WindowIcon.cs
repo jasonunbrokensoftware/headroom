@@ -24,28 +24,17 @@ internal sealed partial class WindowIcon(nint window) : IDisposable
     }
     public void Set(string path, bool requireTaskbarUpdate = true)
     {
-        SetWindowIcons(path, GetDpiForWindow(window));
-        int result = UpdateTaskbar(window, path);
-        if (requireTaskbarUpdate) Marshal.ThrowExceptionForHR(result);
-    }
-    internal void SetWindowIcons(string path, uint dpi)
-    {
-        // Shell consumers can select either window-icon slot. A caption-sized
-        // HICON (24px at 150%) can appear at one quarter the area of the 48px
-        // image. This window has a custom Vue title bar, so provide the full-size
-        // source for both slots; Windows scales it down where appropriate.
-        // https://learn.microsoft.com/windows/win32/winmsg/wm-seticon
-        int size = GetSystemMetricsForDpi(11, dpi); // SM_CXICON
-        nint nextSmall = Load(path, size);
+        uint dpi = GetDpiForWindow(window);
+        nint nextSmall = Load(path, GetSystemMetricsForDpi(49, dpi)); // SM_CXSMICON
         nint nextLarge;
-        try { nextLarge = Load(path, size); }
+        try { nextLarge = Load(path, GetSystemMetricsForDpi(11, dpi)); } // SM_CXICON
         catch { Release(nextSmall); throw; }
-        // Preserve the original small-then-large update sequence and separate
-        // handle ownership. The sizing correction changes only the source size.
-        SendMessageW(window, 0x80, 0, nextSmall); // ICON_SMALL / ICON_SMALL2
-        SendMessageW(window, 0x80, 1, nextLarge); // ICON_BIG
+        SendMessageW(window, 0x80, 0, nextSmall); // WM_SETICON, ICON_SMALL
+        SendMessageW(window, 0x80, 1, nextLarge); // ICON_BIG (window / Alt+Tab; grouped taskbar uses the Shell)
         Release(small); Release(large);
         small = nextSmall; large = nextLarge;
+        int result = UpdateTaskbar(window, path);
+        if (requireTaskbarUpdate) Marshal.ThrowExceptionForHR(result);
     }
     internal static nint Load(string path, int size)
     {

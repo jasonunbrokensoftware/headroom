@@ -74,19 +74,18 @@ theme and interface. Windows icons use owned handles that are released on change
 and shutdown, rather than repeatedly asking Photino for shared file icons.
 The EXE's embedded icon uses Ember. Its ten published RT_ICON resources are
 compared byte-for-byte with the Ember ICO during the single-EXE check.
-The Windows adapter supplies a full-size, DPI-scaled HICON to both the large
-and small window-icon slots. Headroom has no native caption requiring a tiny
-source. At 150% scaling this supplies 48px to both slots, replacing the 24px
-small-slot image that matched the reported quarter-area unpinned taskbar icon.
-Each slot retains its own independently loaded handle. The original update
-sequence (small first, large last) is preserved; only the image dimensions change.
-An intermediate shared-handle/reversed-order implementation was followed by a
-report of stale unpinned icons after relocation, despite correct live HWND pixels.
-That unrelated change was removed to isolate sizing from update behavior. Native
-read-back tests do not prove that Explorer repaints its visible taskbar button.
-The tray keeps its own independent handle and size. A message-only HWND test
-queries all three WM_GETICON variants across 100%-400% scaling and repeated
-theme changes. Visible taskbar rendering still requires manual verification.
+The window-icon update implementation is restored exactly to commit 3f47921,
+where the user confirmed unpinned theme updates worked. It uses the DPI-scaled
+SM_CXSMICON and SM_CXICON dimensions, independent owned handles, and small-then-
+large assignment. At 150% scaling those sources are 24px and 48px respectively.
+Enlarging ICON_SMALL to 48px was followed by stale unpinned taskbar icons. A
+partial rollback of handle sharing and update order left that size change in
+place and did not restore the user's observed behavior. The entire sizing
+attempt is now reverted; the reported small visual size is still unresolved.
+The test that required both slots to be large was removed with that incorrect
+requirement. Native read-back and Shell extraction checks are not tests of
+Explorer's visible taskbar rendering. Do not claim a visible fix from those
+checks alone. The tray keeps its independent handle and size.
 The tray uses NIM_MODIFY and keeps its latest handle for Explorer restart recovery.
 The headless self-test decodes all sixty Windows icon frames without opening a
 window or tray icon. Browser checks cover matching colors and failure rollback.
